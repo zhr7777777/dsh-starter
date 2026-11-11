@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<title>DSH Starter · 启动失败</title>
+<style>
+  :root { color-scheme: dark }
+  html, body { height: 100%; margin: 0 }
+  body {
+    background: #0e1116; color: #e6ebf3;
+    font: 14px/1.7 -apple-system, "PingFang SC", "Segoe UI", "Noto Sans SC", sans-serif;
+    padding: 48px; -webkit-user-select: text; user-select: text;
+  }
+  h1 { margin: 0 0 18px; font-size: 16px; font-weight: 600; color: #ff8f6b }
+  pre {
+    margin: 0; padding: 18px 20px; border-radius: 12px;
+    background: #151b25; border: 1px solid #212a37;
+    font: 12px/1.65 ui-monospace, Menlo, "Cascadia Mono", monospace;
+    color: #b9c3d1; white-space: pre-wrap; word-break: break-word;
+    max-height: 62vh; overflow: auto;
+  }
+  p { color: #7f8899; font-size: 12.5px; margin: 16px 0 0 }
+</style>
+</head>
+<body>
+<h1>启动失败</h1>
+<pre><!-- MESSAGE --></pre>
+<p>完整日志见 <code>DSH_HOME/desktop.log</code>。开发模式下通常先确认根目录跑过 <code>pnpm install</code>，打包版本通常意味着 runtime 目录不完整。</p>
+</body>
+</html>

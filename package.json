@@ -14,7 +14,16 @@
     "typecheck": "node scripts/typecheck.mjs",
     "dev": "node scripts/dev.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "clean": "node scripts/clean.mjs"
+    "clean": "node scripts/clean.mjs",
+    "desktop": "pnpm --filter dsh-starter-desktop run start",
+    "desktop:runtime": "node scripts/build-runtime.mjs",
+    "desktop:pack": "pnpm --filter dsh-starter-desktop run pack",
+    "desktop:smoke": "node scripts/desktop-smoke.mjs",
+    "desktop:smoke:runtime": "node scripts/desktop-smoke.mjs --runtime",
+    "dist": "pnpm --filter dsh-starter-desktop run dist",
+    "dist:mac": "pnpm --filter dsh-starter-desktop run dist:mac",
+    "dist:win": "pnpm --filter dsh-starter-desktop run dist:win",
+    "dist:linux": "pnpm --filter dsh-starter-desktop run dist:linux"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",

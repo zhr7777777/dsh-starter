@@ -5,3 +5,8 @@ dist/
 packages/**/dist/
 *.log
 .DS_Store
+
+# Desktop shell build products: the assembled runtime payload (profile template
+# plus a deployed copy of the official packages) and electron-builder output.
+apps/desktop/runtime/
+apps/desktop/release/

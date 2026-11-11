@@ -1,0 +1,76 @@
+# electron-builder configuration — five targets from one source tree.
+#
+#   mac   : dmg + zip   x64, arm64
+#   win   : nsis        x64
+#   linux : AppImage + deb   x64, arm64
+#
+# The app shell is tiny; everything heavy lives in `runtime/`, which is copied
+# verbatim into the app's resources (outside asar, because it is a Node package
+# tree that must be read from disk, not from an archive).
+appId: dev.dshstarter.desktop
+productName: DSH Starter
+copyright: Built on the official DeepSeek Harness packages
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - src/**/*
+  - package.json
+
+extraResources:
+  # Verbatim copy: this must stay outside asar, because the official packages
+  # are read from disk by a Node process.
+  - from: runtime
+    to: runtime
+    filter:
+      - '**/*'
+
+asar: true
+
+# No `arch` lists on purpose. The runtime payload under runtime/host/node_modules
+# is deployed on the machine that runs the build, so it contains that machine's
+# native binaries (node-pty, koffi, sharp, Office assets). Packaging a different
+# arch would ship x64 binaries inside an arm64 app, or vice versa. Build the arch
+# you are running on — the CI matrix does exactly that.
+
+mac:
+  category: public.app-category.developer-tools
+  artifactName: DSH-Starter-${version}-${arch}.${ext}
+  icon: build/icon.png
+  # Local builds are unsigned; set CSC_LINK / CSC_KEY_PASSWORD (or identity) to sign.
+  identity: null
+  hardenedRuntime: false
+  target:
+    - dmg
+    - zip
+
+dmg:
+  artifactName: DSH-Starter-${version}-${arch}.${ext}
+
+win:
+  icon: build/icon.png
+  artifactName: DSH-Starter-Setup-${version}-${arch}.${ext}
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: DSH-Starter-Setup-${version}-${arch}.${ext}
+
+linux:
+  icon: build/icon.png
+  category: Development
+  synopsis: Electron carrier for the official dsh web server
+  target:
+    - AppImage
+    - deb
+
+appImage:
+  artifactName: DSH-Starter-${version}-${arch}.${ext}
+
+deb:
+  artifactName: DSH-Starter-${version}-${arch}.${ext}

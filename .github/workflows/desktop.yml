@@ -1,0 +1,100 @@
+name: desktop
+
+# Five installers from one source tree. Each job builds on its own operating
+# system and CPU because the runtime payload is platform-specific: `pnpm deploy`
+# resolves the official packages' native dependencies (node-pty, koffi, sharp,
+# office assets) for the machine that runs it. Cross-building from macOS would
+# produce a bundle that cannot start on Linux or Windows.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+    paths:
+      - 'apps/desktop/**'
+      - 'packages/plugins/**'
+      - 'scripts/build-runtime.mjs'
+      - '.github/workflows/desktop.yml'
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macos-15 is arm64; the x64 image is the separate `-intel` label
+          # (macos-13 was retired). Keep the label honest: the native
+          # dependencies below are resolved for whatever CPU runs the job.
+          - name: macOS arm64
+            runner: macos-15
+            platform: --mac
+            arch: arm64
+          - name: macOS x64
+            runner: macos-15-intel
+            platform: --mac
+            arch: x64
+          - name: Windows x64
+            runner: windows-2025
+            platform: --win
+            arch: x64
+          - name: Linux x64
+            runner: ubuntu-24.04
+            platform: --linux
+            arch: x64
+          - name: Linux arm64
+            runner: ubuntu-24.04-arm
+            platform: --linux
+            arch: arm64
+
+    env:
+      # Unsigned local-style builds: no certificate is available in CI.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      npm_config_registry: https://registry.npmjs.org
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+
+      - name: Enable the pinned pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Typecheck plugins
+        run: corepack pnpm typecheck
+
+      - name: Assemble the runtime payload
+        # Builds the plugins, writes the profile template, and deploys the
+        # official packages for this platform into apps/desktop/runtime.
+        run: node scripts/build-runtime.mjs --with-node
+
+      - name: Verify the runtime boots headlessly
+        # Fails the job before we spend time packaging an unusable runtime.
+        run: node scripts/desktop-smoke.mjs --runtime
+
+      - name: Package
+        # electron-builder names the output after the host platform, so pass the
+        # explicit arch to keep the artifact name honest.
+        run: corepack pnpm --filter dsh-starter-desktop exec electron-builder ${{ matrix.platform }} --${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.arch }}-${{ runner.os }}
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,9 @@
+{
+  "name": "dsh-desktop-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dependency anchor for the packaged desktop runtime: pulls @deepseek-ai/dsh and its official bundles so `pnpm deploy` can emit a self-contained node_modules tree.",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.1-rc.5"
+  }
+}

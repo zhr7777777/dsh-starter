@@ -1,0 +1,25 @@
+{
+  "name": "dsh-starter-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron carrier around the official dsh web server. No DSH source is forked: the window only loads the URL the official Host prints.",
+  "type": "module",
+  "main": "src/main.mjs",
+  "scripts": {
+    "runtime": "node ../../scripts/build-runtime.mjs",
+    "start": "node ../../scripts/build-runtime.mjs && electron .",
+    "pack": "node ../../scripts/build-runtime.mjs --with-node && electron-builder --dir",
+    "dist": "node ../../scripts/build-runtime.mjs --with-node && electron-builder",
+    "dist:mac": "node ../../scripts/build-runtime.mjs --with-node && electron-builder --mac",
+    "dist:win": "node ../../scripts/build-runtime.mjs --with-node && electron-builder --win",
+    "dist:linux": "node ../../scripts/build-runtime.mjs --with-node && electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.18.0"
+  },
+  "author": {
+    "name": "dsh-starter"
+  },
+  "homepage": "https://github.com/zhr7777777/dsh-starter"
+}
