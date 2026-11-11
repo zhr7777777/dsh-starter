@@ -1,0 +1,35 @@
+{
+  "name": "dsh-host-only-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Host-only DSH plugin: a service and lifecycle with no browser surface.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "build": "node ../../../scripts/build-plugin.mjs packages/plugins/host-only",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@types/node": "22.20.0",
+    "typescript": "5.9.3"
+  }
+}

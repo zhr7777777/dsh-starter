@@ -1,0 +1,6 @@
+# Composed into the Profile patch by the official plugin manager.
+# A loader entry is also what makes the browser module discoverable: the
+# official client-modules service scans host loader entries for `dsh.client`.
+- insert:
+    - id: dsh-expert-team-plugin
+      name: dsh-expert-team-plugin

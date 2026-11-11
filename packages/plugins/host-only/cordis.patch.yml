@@ -1,0 +1,5 @@
+# Composed into the Profile patch by the official plugin manager.
+# No dsh.client field: this package contributes Host code only.
+- insert:
+    - id: dsh-host-only-plugin
+      name: dsh-host-only-plugin

@@ -1,0 +1,32 @@
+{
+  "name": "dsh-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "description": "Extend the official DeepSeek Harness packages through public plugins and UI slots, without forking them.",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "scripts": {
+    "build": "node scripts/build-plugin.mjs",
+    "build:one": "node scripts/build-plugin.mjs",
+    "typecheck": "node scripts/typecheck.mjs",
+    "dev": "node scripts/dev.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "clean": "node scripts/clean.mjs"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-layout": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.1-rc.5",
+    "@types/node": "22.20.0",
+    "@types/react": "19.2.14",
+    "esbuild": "0.25.12",
+    "react": "19.2.4",
+    "typescript": "5.9.3"
+  }
+}

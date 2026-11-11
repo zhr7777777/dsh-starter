@@ -1,0 +1,1421 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>基于官方 DSH 的前端扩展开发 · 技术分享</title>
+<style>
+:root{
+  --ink:#0e1116; --body:#2b3240; --muted:#66707f; --line:#e3e7ee;
+  --bg:#fff; --bg-soft:#f6f8fb; --bg-code:#0f141b; --code-ink:#e6edf6;
+  --accent:#2f6df6; --accent-soft:#e8efff; --ok:#0f9d6e; --ok-soft:#e6f7f1;
+  --warn:#c26a00; --warn-soft:#fff4e2; --danger:#d92d20; --danger-soft:#fdecea;
+  --radius:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px -12px rgba(16,24,40,.18);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--body);
+  font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+code,pre,kbd,.mono{font-family:ui-monospace,SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);gap:48px;max-width:1240px;margin:0 auto;padding:0 32px}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:32px 0 48px;font-size:13.5px}
+nav.toc .toc-title{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+nav.toc ol{list-style:none;margin:0;padding:0}
+nav.toc a{display:block;padding:4px 10px;border-left:2px solid var(--line);color:var(--body)}
+nav.toc a:hover{text-decoration:none;background:var(--bg-soft)}
+nav.toc a.sub{padding-left:22px;font-size:12.5px;color:var(--muted)}
+nav.toc a.active{border-left-color:var(--accent);color:var(--accent);font-weight:600;background:var(--accent-soft)}
+main{padding:32px 0 120px;min-width:0}
+@media (max-width:980px){
+  .wrap{grid-template-columns:1fr;gap:0;padding:0 20px}
+  nav.toc{position:static;max-height:none;border-bottom:1px solid var(--line);padding:20px 0}
+  nav.toc ol{display:flex;flex-wrap:wrap;gap:4px}
+  nav.toc a{border-left:0;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:12.5px}
+  nav.toc a.sub{display:none}
+  main{padding-top:24px}
+}
+.hero{padding:56px 0 32px;border-bottom:1px solid var(--line);margin-bottom:40px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:5px 12px;font-weight:600}
+h1{font-size:clamp(28px,4vw,44px);line-height:1.25;color:var(--ink);letter-spacing:-.02em;margin:18px 0 14px;font-weight:750}
+.lede{font-size:18px;color:var(--muted);max-width:70ch;margin:0}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chip{font-size:12.5px;border:1px solid var(--line);background:var(--bg-soft);border-radius:999px;padding:4px 11px;color:var(--body)}
+.chip b{color:var(--ink);font-weight:600}
+section{scroll-margin-top:20px;margin:0 0 56px}
+h2{font-size:26px;line-height:1.3;color:var(--ink);letter-spacing:-.01em;margin:0 0 8px;font-weight:700}
+h2 .num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin-right:10px;border-radius:9px;background:var(--ink);color:#fff;font-size:14px;font-weight:600;vertical-align:2px}
+h3{font-size:18px;color:var(--ink);margin:32px 0 10px;font-weight:650}
+h4{font-size:15px;color:var(--ink);margin:22px 0 6px;font-weight:650}
+p{margin:0 0 14px}
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin:5px 0}
+hr{border:0;border-top:1px solid var(--line);margin:44px 0}
+.note,.warn,.bad,.good{border-radius:var(--radius);padding:16px 18px;margin:18px 0;font-size:14.5px;border:1px solid}
+.note{background:var(--accent-soft);border-color:#c9d8ff}
+.warn{background:var(--warn-soft);border-color:#f4d8ae}
+.bad{background:var(--danger-soft);border-color:#f6c9c4}
+.good{background:var(--ok-soft);border-color:#bfe8d8}
+.note b,.warn b,.bad b,.good b{color:var(--ink)}
+.note .label,.warn .label,.bad .label,.good .label{display:block;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:4px;color:var(--muted)}
+figure.code{margin:18px 0}
+figure.code figcaption{font-size:12.5px;color:var(--muted);margin-bottom:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+figure.code figcaption .path{font-family:ui-monospace,Menlo,monospace;background:var(--bg-soft);border:1px solid var(--line);border-radius:6px;padding:1px 7px;color:var(--body)}
+pre{margin:0;background:var(--bg-code);color:var(--code-ink);border-radius:12px;padding:16px 18px;overflow:auto;font-size:13px;line-height:1.7;tab-size:2}
+pre .c{color:#8b9bb0;font-style:italic}
+pre .k{color:#8ab4ff}
+pre .s{color:#a5e6a5}
+code.inline{background:var(--bg-soft);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:.9em;color:#243044}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:var(--radius);margin:18px 0;box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:14px;background:#fff}
+th,td{padding:10px 13px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{background:var(--bg-soft);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:650;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td code{font-size:12.5px;background:var(--bg-soft);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+table.slots{table-layout:fixed;min-width:760px}
+table.slots th:nth-child(1),table.slots td:nth-child(1){width:34%}
+table.slots th:nth-child(2),table.slots td:nth-child(2){width:19%}
+table.slots th:nth-child(3),table.slots td:nth-child(3){width:47%}
+table.slots td{font-size:13px;word-break:break-word}
+table.slots td:first-child code{white-space:normal;overflow-wrap:anywhere}
+table.slots .pkg{font-size:10.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;margin-top:3px}
+table.slots .meta{white-space:nowrap}
+table.slots .own{margin-top:5px;font-size:11px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;white-space:normal;overflow-wrap:anywhere}
+.area-note{color:var(--muted);font-size:14px;margin:0 0 6px}
+.tag{display:inline-block;font-size:11.5px;font-weight:650;border-radius:999px;padding:1px 9px;border:1px solid;white-space:nowrap}
+.tag.k{background:#eef3ff;border-color:#c9d8ff;color:#1d4ed8}
+.tag.s{background:var(--ok-soft);border-color:#bfe8d8;color:#0a7a56}
+.tag.w{background:var(--warn-soft);border-color:#f4d8ae;color:#96500a}
+.tag.n{background:#f1f4f9;border-color:#dce2ec;color:#465063}
+.scope{font-size:11.5px;font-family:ui-monospace,Menlo,monospace;color:var(--muted)}
+.scope.session{color:#0a7a56}
+.scope.root{color:#1d4ed8}
+.scope.session-maybe{color:#96500a}
+.grid{display:grid;gap:14px;margin:20px 0}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:820px){.g2,.g3{grid-template-columns:1fr}}
+.card{border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;background:#fff;box-shadow:var(--shadow)}
+.card h4{margin:0 0 6px;font-size:15px}
+.card p{margin:0;font-size:14px;color:var(--muted)}
+.card .kicker{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:6px}
+.seam{border-left:3px solid var(--accent)}
+.diagram{margin:22px 0;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-soft);padding:18px;box-shadow:var(--shadow)}
+.diagram svg{display:block;width:100%;height:auto}
+.diagram .cap{font-size:12.5px;color:var(--muted);margin-top:10px;text-align:center}
+figure.shot{margin:22px 0}
+figure.shot .frame{overflow:hidden;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);background:#fff}
+figure.shot .frame.h-620{max-height:620px}
+figure.shot .frame.h-820{max-height:820px}
+figure.shot img{display:block;width:100%}
+figure.shot figcaption{font-size:12.5px;color:var(--muted);margin-top:8px;text-align:center}
+figure.code.full{padding:0;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);background:var(--bg-code)}
+figure.code.full figcaption{margin:0;padding:9px 14px;border-bottom:1px solid #222c3a;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+figure.code.full figcaption .path{background:#1a2330;border-color:#2a3646;color:#c8d5e6}
+figure.code.full figcaption .lines{font-size:11.5px;color:#8b9bb0;border:1px solid #2a3646;border-radius:999px;padding:0 8px}
+figure.code.full figcaption .hint{font-size:11.5px;color:#6f7f95;margin-left:auto}
+figure.code.full pre{border-radius:0 0 12px 12px;max-height:620px;overscroll-behavior:contain;white-space:pre-wrap;overflow-wrap:anywhere;padding:14px 16px 16px 12px}
+figure.code.full pre code{display:block;counter-reset:ln}
+figure.code.full .line{display:grid;grid-template-columns:3.2em minmax(0,1fr);column-gap:1.1em;min-height:1.7em;counter-increment:ln}
+figure.code.full .line::before{content:counter(ln);color:#5c6c82;text-align:right;user-select:none;-webkit-user-select:none;font-variant-numeric:tabular-nums}
+p.src-note{font-size:13px;color:var(--muted);margin:-8px 0 18px;padding-left:2px}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;margin:20px 0}
+.flow .step{flex:1 1 160px;min-width:160px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px 14px;box-shadow:var(--shadow)}
+.flow .step .n{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.08em}
+.flow .step b{display:block;color:var(--ink);font-size:14px;margin:2px 0 3px}
+.flow .step span{font-size:12.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;word-break:break-all}
+.flow .arrow{align-self:center;color:var(--muted);font-size:18px}
+@media (max-width:700px){.flow .arrow{display:none}}
+.timeline{counter-reset:step;list-style:none;padding:0;margin:18px 0}
+.timeline li{counter-increment:step;position:relative;padding:0 0 18px 44px;border-left:2px solid var(--line);margin-left:12px}
+.timeline li:last-child{border-left-color:transparent;padding-bottom:0}
+.timeline li::before{content:counter(step);position:absolute;left:-15px;top:-2px;width:28px;height:28px;border-radius:50%;background:#fff;border:2px solid var(--accent);color:var(--accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.timeline b{color:var(--ink)}
+footer{border-top:1px solid var(--line);padding:28px 0 60px;color:var(--muted);font-size:13px}
+@media print{nav.toc{display:none}.wrap{display:block;max-width:none;padding:0}body{font-size:12px}section{page-break-inside:avoid}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="目录">
+  <p class="toc-title">Contents</p>
+  <ol>
+    <li><a href="#why">第一部分 · 为什么用插槽</a></li>
+    <li><a class="sub" href="#paths">三条路径对比</a></li>
+    <li><a class="sub" href="#guarantees">插槽给的四个保证</a></li>
+    <li><a class="sub" href="#flow">从启动到生效的完整链路</a></li>
+    <li><a class="sub" href="#style">自定义样式怎么做</a></li>
+    <li><a href="#map">第二部分 · 全部 104 个插槽</a></li>
+    <li><a class="sub" href="#map-diagrams">位置图</a></li>
+    <li><a class="sub" href="#map-list">分组清单</a></li>
+    <li><a href="#practice">第三部分 · 两个实战插件</a></li>
+    <li><a class="sub" href="#layout">工程结构</a></li>
+    <li><a class="sub" href="#starter">starter 从 0 到 1</a></li>
+    <li><a class="sub" href="#expert">expert-team 浮层与跳转</a></li>
+    <li><a class="sub" href="#devloop">本地开发循环</a></li>
+    <li><a class="sub" href="#debug">调试手册</a></li>
+    <li><a class="sub" href="#accept">验收与 Checklist</a></li>
+  </ol>
+</nav>
+<main>
+<header class="hero">
+  <span class="eyebrow">技术分享 · DeepSeek Harness 前端扩展</span>
+  <h1>不改官方一行代码，<br>把自定义界面挂进 DSH</h1>
+  <p class="lede">官方包提供「树」和「洞」，我们只提供「节点」。这份文档讲清三件事：为什么要走插槽、官方到底留了哪些洞（104 个）、以及用两个最小插件把开发与调试跑通。</p>
+  <div class="hero-meta">
+    <span class="chip">官方版本 <b>@deepseek-ai/dsh 0.2.1-rc.5</b></span>
+    <span class="chip">插槽 <b>104</b>（11 个区域）</span>
+    <span class="chip">示例 <b>starter · expert-team</b></span>
+    <span class="chip">工程 <b>pnpm workspace</b></span>
+  </div>
+</header>
+
+<!-- ================= PART 1 ================= -->
+<section id="why">
+<h2><span class="num">1</span>为什么必须通过插槽做自定义前端</h2>
+<p>先说结论：DSH 的前端不是一个可以随便改模板的页面，而是<b>由一组官方客户端插件装配出来的运行时</b>。界面结构、样式变量、会话数据、可访问性都由官方插件持有；第三方唯一被授权的介入方式，是往它预留的「插槽」里注册组件。</p>
+
+<h3 id="paths">三条路径对比</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>做法</th><th>能改什么</th><th>代价</th><th>结论</th></tr></thead>
+<tbody>
+<tr>
+  <td><b>Fork 官方源码</b></td>
+  <td>任何东西</td>
+  <td>每次升级重放全部差异；官方客户端是打包产物，改动不可评审；失去官方修复</td>
+  <td><span class="tag w">不采用</span></td>
+</tr>
+<tr>
+  <td><b>运行时改 DOM / 注入全局 CSS</b></td>
+  <td>视觉上看起来能改</td>
+  <td>官方一改类名就崩；拿不到会话数据；破坏无障碍与键盘导航；React 会擦掉你的节点</td>
+  <td><span class="tag w">不采用</span></td>
+</tr>
+<tr>
+  <td><b>注册进官方插槽</b></td>
+  <td>官方明确预留的位置与数据</td>
+  <td>受插槽契约约束（这恰恰是优点）</td>
+  <td><span class="tag s">唯一推荐</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="guarantees">插槽给的四个保证</h3>
+<div class="grid g2">
+  <div class="card seam">
+    <div class="kicker">1 · 类型</div>
+    <h4>插槽名与 props 都在官方类型里</h4>
+    <p>每个插槽在 <code class="inline">SlotMap</code> 中声明了 <code class="inline">kind</code>、<code class="inline">scope</code> 和 <code class="inline">owner</code> props。注册时类型不符直接编译失败，不靠文档猜。</p>
+  </div>
+  <div class="card seam">
+    <div class="kicker">2 · 数据</div>
+    <h4>会话上下文自动下发</h4>
+    <p><code class="inline">session</code> 作用域会把 <code class="inline">sessionId</code>、<code class="inline">useSession</code>、<code class="inline">useInput</code>、<code class="inline">inputActions</code> 合成进组件 props，不需要自己连 store。</p>
+  </div>
+  <div class="card seam">
+    <div class="kicker">3 · 生命周期</div>
+    <h4>卸载即回收</h4>
+    <p><code class="inline">ctx.slots.inject()</code> 绑在插件 fiber 上：插件卸载、声明塌陷、热重载，注册会连同子插槽一起被清理。</p>
+  </div>
+  <div class="card seam">
+    <div class="kicker">4 · 故障域</div>
+    <h4>一个组件崩了，页面还在</h4>
+    <p>条目渲染出错会被捕获并「退役」，回落到同格的下一个候选；同优先级抢位则在注册期直接抛错。</p>
+  </div>
+</div>
+
+<div class="note">
+  <span class="label">一句话</span>
+  <b>插槽不是「留了个 div 给你」，而是一份带类型的双向契约：</b>壳承诺给你位置与数据，你承诺只渲染那块内容、并在卸载时干净退出。
+</div>
+
+<h3 id="flow">一次启动里，插槽是怎么长出来的</h3>
+<p>上面的「保证」听起来抽象。把它落到 WorkDSH 桌面的一次真实启动上：一个插件从磁盘上的包，变成屏幕上一块 UI，要穿过 <b>四个执行环境</b>、<b>九个交接点</b>。这一节按真实代码走一遍——任何一跳断了，表现都不一样，这张图同时也是第三部分调试手册的地图。</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>参与方</th><th>它是谁</th><th>它负责什么</th><th>它能改什么</th></tr></thead>
+<tbody>
+<tr>
+  <td><b>Electron 主进程</b><br><span class="scope">外壳</span></td>
+  <td><code>apps/desktop/src/workdsh-main.ts</code></td>
+  <td>建窗口、起 Host 子进程、抓就绪 URL、装载页面。没有任何 DSH 业务代码。</td>
+  <td>窗口、菜单、更新、插件安装入口</td>
+</tr>
+<tr>
+  <td><b>Host 进程</b><br><span class="scope">官方 Node</span></td>
+  <td><code>dsh/lib/profile-boot.js</code> 的 <code>runProfile()</code></td>
+  <td>按 Profile 依赖 + 分层 patch 装配插件树，提供 HTTP/WS 服务，决定前端拿到什么。</td>
+  <td>服务、路由、工具、Agent、前端模块清单</td>
+</tr>
+<tr>
+  <td><b>浏览器进程</b><br><span class="scope">Web 前端</span></td>
+  <td>官方客户端插件（<code>dsh-client-ui-*</code>）</td>
+  <td>把 Host 给出的模块清单装配成 React 应用，持有布局、会话、样式变量。</td>
+  <td>只通过插槽注册改</td>
+</tr>
+<tr>
+  <td><b>你的插件包</b><br><span class="scope">两个面</span></td>
+  <td><code>packages/plugins/&lt;name&gt;</code></td>
+  <td>Host 面提供服务；浏览器面往插槽里放组件。</td>
+  <td>被授权的那一格</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 1000 860" role="img" aria-label="Electron 外壳启动 Host 进程、再装载浏览器的时序图">
+  <defs>
+    <style>
+      .la{fill:#eef3ff;stroke:#b9ccff;stroke-width:1.3}
+      .lb{fill:#e9f8f2;stroke:#b7e4d2;stroke-width:1.3}
+      .lc{fill:#fff5e6;stroke:#f0d3a4;stroke-width:1.3}
+      .hd{font:600 12px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+      .tx{font:600 11.5px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+      .mo{font:10.5px ui-monospace,Menlo,monospace;fill:#243044}
+      .sm{font:10px -apple-system,"PingFang SC",sans-serif;fill:#66707f}
+      .gl{stroke:#ccd5e2;stroke-width:1;stroke-dasharray:4 5}
+      .ln{fill:#fbfcfe;stroke:#dfe4ec;stroke-width:1.1;stroke-dasharray:5 4}
+      .ar{stroke:#7b8a9e;stroke-width:1.4;fill:none;marker-end:url(#ah)}
+    </style>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7b8a9e"/>
+    </marker>
+  </defs>
+
+  <!-- lane guides -->
+  <line class="gl" x1="320" y1="48" x2="320" y2="830"/>
+  <line class="gl" x1="680" y1="48" x2="680" y2="830"/>
+
+  <!-- lane headers -->
+  <rect x="24" y="18" width="276" height="26" rx="8" fill="#eef3ff" stroke="#b9ccff"/>
+  <text class="hd" x="38" y="36">① Electron 主进程（外壳）</text>
+  <rect x="340" y="18" width="320" height="26" rx="8" fill="#e9f8f2" stroke="#b7e4d2"/>
+  <text class="hd" x="354" y="36">② 官方 Host 进程（Node，Profile 树）</text>
+  <rect x="700" y="18" width="276" height="26" rx="8" fill="#fff5e6" stroke="#f0d3a4"/>
+  <text class="hd" x="714" y="36">③ 浏览器进程（Web 前端）</text>
+
+  <!-- A idle note -->
+  <rect class="ln" x="24" y="330" width="276" height="66" rx="10"/>
+  <text class="tx" x="38" y="352">外壳不知道插槽</text>
+  <text class="mo" x="38" y="368">不解析前端 · 不注入脚本 · 不打包</text>
+  <text class="sm" x="38" y="384">它只认一行 dsh web: …</text>
+
+  <!-- A1 -->
+  <rect class="la" x="24" y="96" width="276" height="66" rx="10"/>
+  <text class="tx" x="38" y="118">app.whenReady()</text>
+  <text class="mo" x="38" y="134">BrowserWindow{ sandbox:true }</text>
+  <text class="sm" x="38" y="150">先放一页「正在启动个人工作区」占位</text>
+
+  <!-- A2 -->
+  <rect class="la" x="24" y="196" width="276" height="66" rx="10"/>
+  <text class="tx" x="38" y="218">spawn(内置 node, .workdsh-host.mjs)</text>
+  <text class="mo" x="38" y="234">--no-open · stdio: pipe</text>
+  <text class="sm" x="38" y="250">env: DSH_HOME / DSH_AGENTS_HOME</text>
+
+  <!-- B3 -->
+  <rect class="lb" x="340" y="196" width="320" height="66" rx="10"/>
+  <text class="tx" x="354" y="218">runProfile()：装配插件树</text>
+  <text class="mo" x="354" y="234">profile 依赖 + 分层 cordis.patch.yml</text>
+  <text class="sm" x="354" y="250">→ cordis Loader 挂载每个插件 fiber</text>
+
+  <!-- B4 -->
+  <rect class="lb" x="340" y="296" width="320" height="66" rx="10"/>
+  <text class="tx" x="354" y="318">每个插件的 apply(ctx) 依次执行</text>
+  <text class="mo" x="354" y="334">服务 · 路由 · 工具 · 客户端注册表</text>
+  <text class="sm" x="354" y="350">ClientModuleRegistry（inject: loader）</text>
+
+  <!-- B5 -->
+  <rect class="lb" x="340" y="396" width="320" height="66" rx="10"/>
+  <text class="tx" x="354" y="418">扫 loader entry 的 dsh.client</text>
+  <text class="mo" x="354" y="434">→ window.__DSH_BOOT__ 模块图</text>
+  <text class="sm" x="354" y="450">index tap：往 HTML 里塞 script / global 行</text>
+
+  <!-- B6 -->
+  <rect class="lb" x="340" y="496" width="320" height="66" rx="10"/>
+  <text class="tx" x="354" y="518">loader.await() → 启动审计 → 打印就绪</text>
+  <text class="mo" x="354" y="534">dsh web: http://127.0.0.1:PORT/?token=…</text>
+  <text class="sm" x="354" y="550">此时插件树已全部激活，URL 才有意义</text>
+
+  <!-- A7 -->
+  <rect class="la" x="24" y="596" width="276" height="66" rx="10"/>
+  <text class="tx" x="38" y="618">正则捕获 stdout 里的 URL</text>
+  <text class="mo" x="38" y="634">openWindow(url) → page.loadURL(url)</text>
+  <text class="sm" x="38" y="650">token 是这次进程的一次性凭据</text>
+
+  <!-- C idle note 1 -->
+  <rect class="ln" x="700" y="96" width="276" height="66" rx="10"/>
+  <text class="tx" x="714" y="118">此刻还没有页面</text>
+  <text class="mo" x="714" y="134">窗口里是占位页 / about:blank</text>
+  <text class="sm" x="714" y="150">等外壳把 URL 交过来才开始导航</text>
+
+  <!-- C idle note 2 -->
+  <rect class="ln" x="700" y="400" width="276" height="66" rx="10"/>
+  <text class="tx" x="714" y="422">前端代码也是 Host 给的</text>
+  <text class="mo" x="714" y="438">/plugins/&lt;id&gt;/client.js 由 Host 路由</text>
+  <text class="sm" x="714" y="454">没有 Host，连模块表都拼不出来</text>
+
+  <!-- C8 -->
+  <rect class="lc" x="700" y="696" width="276" height="66" rx="10"/>
+  <text class="tx" x="714" y="718">GET /?token=… → 换 cookie → 302 ./</text>
+  <text class="mo" x="714" y="734">index.html 里已有 __DSH_BOOT__</text>
+  <text class="sm" x="714" y="750">之后的静态资源用 cookie 认证</text>
+
+  <!-- arrows -->
+  <path class="ar" d="M162 162 L162 192"/>
+  <text class="sm" x="172" y="182">起子进程</text>
+
+  <path class="ar" d="M300 229 L318 229 L318 229 L336 229"/>
+  <path class="ar" d="M456 262 L456 292"/>
+  <path class="ar" d="M456 362 L456 392"/>
+  <path class="ar" d="M456 462 L456 492"/>
+
+  <path class="ar" d="M340 529 L318 529 L318 629 L304 629"/>
+  <text class="sm" x="128" y="586">stdout 一行</text>
+
+  <path class="ar" d="M162 662 L162 729 L696 729"/>
+  <text class="sm" x="300" y="722">loadURL（沙箱：页面里没有 Node）</text>
+
+  <text class="sm" x="706" y="666">手上有 token 才能进</text>
+  <text class="sm" x="24" y="806">④ 之后的一切都在浏览器里：模块表 → 插件 apply → 插槽注册 → React 渲染（见图 2）</text>
+</svg>
+<div class="cap">图 1 · 启动时序：外壳只做三件事（起进程、等一行 URL、开窗口）；插件的加载顺序与内容全部由 Host 的插件树决定。</div>
+</div>
+
+<p>图 1 停在「HTML 到手」。真正让插件出现在界面上的是接下来这段纯浏览器内的管线——它和 Host 完全解耦，Host 只是把清单写好，浏览器照着装。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 1000 566" role="img" aria-label="浏览器内从 __DSH_BOOT__ 到组件挂载的五步管线">
+  <defs>
+    <style>
+      .st{fill:#eef3ff;stroke:#b9ccff;stroke-width:1.3}
+      .nt{fill:#fff;stroke:#e3e7ee;stroke-width:1.2}
+      .hd{font:600 11.5px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+      .mo{font:10.5px ui-monospace,Menlo,monospace;fill:#243044}
+      .sm{font:10.5px -apple-system,"PingFang SC",sans-serif;fill:#66707f}
+      .nu{font:700 11px ui-monospace,Menlo,monospace;fill:#2f6df6}
+      .ar{stroke:#7b8a9e;stroke-width:1.4;fill:none;marker-end:url(#ah2)}
+    </style>
+    <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7b8a9e"/>
+    </marker>
+  </defs>
+
+  <rect class="st" x="24" y="34" width="536" height="82" rx="10"/>
+  <text class="nu" x="38" y="54">1</text>
+  <text class="hd" x="58" y="54">HTML 里已经有清单</text>
+  <text class="mo" x="38" y="76">window.__DSH_BOOT__ = { rev, release, entries, batches }</text>
+  <text class="sm" x="38" y="96">由 Host 的 index tap 注入；bootstrap 批在 head 里同步、application 批 preload 排队</text>
+
+  <rect class="st" x="24" y="136" width="536" height="82" rx="10"/>
+  <text class="nu" x="38" y="156">2</text>
+  <text class="hd" x="58" y="156">bundle 逐个自登记，先不执行</text>
+  <text class="mo" x="38" y="178">&lt;script src="/plugins/&lt;id&gt;/client.js"&gt; → __ModuleLoader__.load({ id, factory })</text>
+  <text class="sm" x="38" y="198">每个客户端包都是这个外壳：惰性 CJS 表，加载 ≠ 运行</text>
+
+  <rect class="st" x="24" y="238" width="536" height="82" rx="10"/>
+  <text class="nu" x="38" y="258">3</text>
+  <text class="hd" x="58" y="258">Loader 按 inject 依赖解析顺序跑 apply(ctx)</text>
+  <text class="mo" x="38" y="280">export const inject = ['slots', 'layout']; export function apply(ctx) {…}</text>
+  <text class="sm" x="38" y="300">依赖先就绪再执行；apply 抛错 = 该 fiber 失败，插件不生效</text>
+
+  <rect class="st" x="24" y="340" width="536" height="82" rx="10"/>
+  <text class="nu" x="38" y="360">4</text>
+  <text class="hd" x="58" y="360">注册写进插槽的条目表（SlotCore）</text>
+  <text class="mo" x="38" y="382">ctx.slots.inject(name, () =&gt; ctx.slots.register(def, Component))</text>
+  <text class="sm" x="38" y="402">def 携带 id / key / order / priority；返回值是 disposer，挂回插件 fiber</text>
+
+  <rect class="st" x="24" y="442" width="536" height="82" rx="10"/>
+  <text class="nu" x="38" y="462">5</text>
+  <text class="hd" x="58" y="462">官方 owner 渲染「洞」，你的组件被挂上</text>
+  <text class="mo" x="38" y="484">取该槽条目 → 按 order / priority 排序 → React 挂载 → DOM</text>
+  <text class="sm" x="38" y="504">页面切换、会话切换、插件卸载都会重算这一格，组件跟着进出</text>
+
+  <path class="ar" d="M292 116 L292 132"/>
+  <path class="ar" d="M292 218 L292 234"/>
+  <path class="ar" d="M292 320 L292 336"/>
+  <path class="ar" d="M292 422 L292 438"/>
+
+  <!-- notes -->
+  <rect class="nt" x="596" y="34" width="380" height="82" rx="10"/>
+  <text class="sm" x="610" y="56">清单里没有你的模块 → 后面的步骤一步都不会发生。</text>
+  <text class="sm" x="610" y="74">缺 <tspan class="mo">dsh.client</tspan> 字段或缺 loader entry，都是这一步断。</text>
+
+  <rect class="nt" x="596" y="136" width="380" height="82" rx="10"/>
+  <text class="sm" x="610" y="158">外壳写错（没用 load({id,factory})）时：</text>
+  <text class="mo" x="610" y="178">loaded without registering "&lt;id&gt;"</text>
+
+  <rect class="nt" x="596" y="238" width="380" height="82" rx="10"/>
+  <text class="sm" x="610" y="260">inject 少写一项的典型报错：</text>
+  <text class="mo" x="610" y="280">Cannot read properties of undefined</text>
+  <text class="sm" x="610" y="298">（reading 'slots' / 'layout'）</text>
+
+  <rect class="nt" x="596" y="340" width="380" height="82" rx="10"/>
+  <text class="sm" x="610" y="362">同 id 同 priority 抢同一格 → 注册期就抛错；</text>
+  <text class="sm" x="610" y="380">不同 priority → 低者胜出，卸载后自动恢复。</text>
+
+  <rect class="nt" x="596" y="442" width="380" height="82" rx="10"/>
+  <text class="sm" x="610" y="464">组件渲染抛错只退役这一条：</text>
+  <text class="sm" x="610" y="482">格子回落到同格下一个候选，页面继续可用。</text>
+</svg>
+<div class="cap">图 2 · 浏览器内五步：清单 → 惰性模块表 → 按依赖执行 apply → 写入插槽表 → owner 渲染。右侧是每一步断掉时的可观测症状。</div>
+</div>
+
+<h4>按代码说一遍（WorkDSH 桌面的真实入口）</h4>
+<ol class="timeline">
+  <li><b>外壳不等任何人</b>：<code class="inline">app.whenReady()</code> 之后先建一个隐藏的 <code class="inline">BrowserWindow</code>，把「正在启动个人工作区」的占位 HTML 塞进去，所以用户看到的不是白屏。</li>
+  <li><b>起 Host 子进程</b>：<code class="inline">spawn(内置 node, [.workdsh-host.mjs, '--no-open'])</code>，环境里带 <code class="inline">DSH_HOME</code>、<code class="inline">DSH_AGENTS_HOME</code> 和 patch 层目录；stdout 用 pipe 接回来。</li>
+  <li><b>Host 装配插件树</b>：启动器里只有一句 <code class="inline">runProfile({ profile, patchFiles, … })</code>——Profile 的 <code class="inline">dependencies</code> 加上叠加的 <code class="inline">cordis.patch.yml</code>，决定这一棵树上有哪些插件。</li>
+  <li><b>插件激活</b>：每个插件 <code class="inline">apply(ctx)</code> 拿到的 <code class="inline">ctx</code> 是同一个 cordis 上下文；服务、路由、工具、以及前端注册表都在这时挂上。</li>
+  <li><b>组前端清单</b>：<code class="inline">ClientModuleRegistry</code>（自己 <code class="inline">inject: ['loader']</code>）扫描 loader entries，挑出声明了 <code class="inline">dsh.client</code> 的包，算出模块顺序，产出 <code class="inline">window.__DSH_BOOT__</code>，并把 <code class="inline">script</code> / <code class="inline">global</code> 行注入 index HTML。</li>
+  <li><b>就绪才打印 URL</b>：<code class="inline">loader.await()</code> 等整棵树稳定，再做一次启动审计，最后才 <code class="inline">console.log('dsh web: ' + authenticatedUrl)</code>。也就是说<b>URL 出现时，插件树已经是完整的</b>。</li>
+  <li><b>外壳抓 URL 开窗</b>：<code class="inline">READY_PATTERN</code> 从 stdout 里抠出带 token 的地址，<code class="inline">page.loadURL(url)</code>，成功后销毁占位窗口并显示。</li>
+  <li><b>token 换成 cookie</b>：第一次带 <code class="inline">?token=</code> 的 index 请求会换发 cookie 并 302 到干净的 <code class="inline">./</code>，页面里的静态资源与 <code class="inline">/plugins/…</code> 都靠这个 cookie 认证。</li>
+  <li><b>浏览器装配</b>：<code class="inline">__ModuleLoader__</code> 先建惰性 CJS 表，每个 <code class="inline">/plugins/&lt;id&gt;/client.js</code> 只登记工厂不执行；cordis Loader 按 <code class="inline">inject</code> 顺序实例化 fiber，调用每个模块的 <code class="inline">apply(ctx)</code>。</li>
+  <li><b>注册 → 渲染</b>：<code class="inline">ctx.slots.register()</code> 把组件写进对应插槽的条目表；官方 owner 组件渲染到那一格时按 <code class="inline">order</code> / <code class="inline">priority</code> 取条目，React 挂上去——这就是你在界面上看到的那块 UI。</li>
+</ol>
+
+<div class="note">
+  <span class="label">三个条件同时成立</span>
+  <b>①</b> 包出现在 Profile 的依赖里（<code class="inline">dsh plugin add -w</code> 装进去）；<b>②</b> 有一行 loader entry 且包声明了 <code class="inline">dsh.client</code>；<b>③</b> 该模块的 <code class="inline">apply</code> 没有抛错、注册的插槽名真实存在。三者缺一，界面都完全正常——只是没有你的东西，这正是最容易误判的地方。
+</div>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>卡在哪一步</th><th>你会看到</th><th>先查什么</th></tr></thead>
+<tbody>
+<tr><td>② 起进程</td><td>窗口停在「正在启动个人工作区」，90 秒后弹超时</td><td>Host 进程能不能独立跑起来；端口是否被占</td></tr>
+<tr><td>③ 装配插件树</td><td>URL 打得开，但插件整片不存在</td><td><code>cordis.yml</code> / patch 层、包是否真的装进 Profile</td></tr>
+<tr><td>④ 激活</td><td>只在 Host 日志里出现一个 FAILED fiber</td><td>插件 <code>apply</code> 的首个异常；启动审计报告</td></tr>
+<tr><td>⑤ 组清单</td><td>Host 正常，页面也正常，就是没模块</td><td>loader entry 是否有 <code>dsh.client</code>、bundle 路径是否存在</td></tr>
+<tr><td>⑨ 浏览器装配</td><td>Console 报 <code>loaded without registering</code> / 白屏</td><td>打包外壳是否 <code>load({ id, factory })</code>；模块 id 是否与清单一致</td></tr>
+<tr><td>⑩ 注册</td><td>模块加载了，但界面没变化</td><td>插槽名拼写、<code>id</code> 与 <code>main</code> 的 <code>key</code> 是否一致</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>这套分层看着绕，收益很直接：<b>外壳不含业务</b>（换版本只换 Host）；<b>Host 不含像素</b>（同一份前端也能给 <code class="inline">dsh web</code> 用）；<b>插件不带外壳</b>（一个包同时提供 Host 面与浏览器面）。所以「不改官方一行代码」不是口号，而是这条链路上每一跳各自守边界的结果。</p>
+
+<h3 id="style">那「自定义样式」到底怎么写</h3>
+<p>前端定制的 90% 需求其实是三件事：<b>加一块 UI</b>、<b>换掉某个占位</b>、<b>统一视觉</b>。它们在插槽体系里各有正确做法。</p>
+
+<h4>① 加一块 UI：组件 + 局部样式</h4>
+<p>组件内部写 <code class="inline">&lt;style&gt;</code> 并使用官方设计变量，不写全局选择器：</p>
+<figure class="code">
+  <figcaption><span class="path">packages/plugins/expert-team/src/client.tsx</span></figcaption>
+<pre><code>const css = `
+.dsh-expert-team__trigger{height:36px;border-radius:10px;color:var(--dsw-alias-label-secondary)}
+.dsh-expert-team__trigger:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dsh-expert-team__popover{background:var(--dsw-alias-bg-layer-1);box-shadow:var(--dsw-elevation-panel)}
+`</code></pre>
+</figure>
+<p>官方暴露的变量族（<code class="inline">--dsw-alias-bg-layer-1/2</code>、<code class="inline">--dsw-alias-label-primary/secondary</code>、<code class="inline">--dsw-alias-border-l2</code>、<code class="inline">--dsw-elevation-panel</code>、<code class="inline">--dsw-font-family</code>）会跟随主题与暗色模式自动变化——<b>用变量，不要写死颜色</b>。</p>
+
+<h4>② 换掉某个占位：用 <code class="inline">priority</code> 显式遮蔽</h4>
+<figure class="code">
+  <figcaption>同 id 不同优先级：低优先级胜出，卸载后自动恢复</figcaption>
+<pre><code><span class="c">// 只在自己的容器里遮蔽，且写明遮蔽谁、何时撤</span>
+ctx.slots.register({ name: 'conversation.input.left', id: 'some-picker', priority: -20 }, () =&gt; null)</code></pre>
+</figure>
+<p>不要用「条件渲染 return null」去压别人的注册——那是别人的条目，没有生命周期可言。</p>
+
+<h4>③ 统一视觉：只改变量，不改结构</h4>
+<p>品牌、字号、圆角这类全局观感，通过官方已有的样式变量覆盖（在自有插件里挂一段 <code class="inline">:root</code> 变量覆盖即可），<b>不要</b>去改官方组件内部的类名或 DOM。</p>
+
+<div class="bad">
+  <span class="label">三条红线</span>
+  <b>不改官方包文件</b>（升级即失效，且不可评审）；<b>不接管官方 DOM</b>（React 会重渲染覆盖你）；<b>不复制一份官方组件再改</b>（两份实例 = 两套状态）。
+</div>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section id="map">
+<h2><span class="num">2</span>官方前端插槽全图（104 个）</h2>
+<p>下面这份清单不是手写的：它由脚本扫描已安装的 <code class="inline">@deepseek-ai/dsh-client-*</code> 包里所有 <code class="inline">interface SlotMap</code> 声明生成，含 <code class="inline">kind</code> / <code class="inline">scope</code> / <code class="inline">owner props</code>；“位置与用途”一列为官方注释的中文说明。</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>来源包</th><th>插槽数</th><th>负责的界面</th></tr></thead>
+<tbody>
+<tr><td><code>dsh-client-ui-conversation</code></td><td>29</td><td>会话外壳、头部、输入区、消息流容器</td></tr>
+<tr><td><code>dsh-client-ui-chat</code></td><td>9</td><td>消息气泡、推理块、命令视图、额度提示</td></tr>
+<tr><td><code>dsh-client-ui-sidebar</code></td><td>8</td><td>左栏品牌、面板列表、工作区、设置入口</td></tr>
+<tr><td><code>dsh-client-ui-plugin-manager</code></td><td>9</td><td>插件市场与插件详情</td></tr>
+<tr><td><code>dsh-client-ui-settings</code></td><td>9</td><td>设置弹层、分区、通用项</td></tr>
+<tr><td><code>dsh-client-ui-workspace</code></td><td>7</td><td>工作区选择、会话行、Toast</td></tr>
+<tr><td><code>dsh-client-ui-sidebar-right</code></td><td>7</td><td>右栏、页签、页签菜单</td></tr>
+<tr><td><code>dsh-client-ui-layout</code></td><td>6</td><td>三栏框架、外壳边、浮层、<code>main</code></td></tr>
+<tr><td><code>dsh-client-ui-sidebar-documentpreview</code></td><td>5</td><td>文档预览页签与操作</td></tr>
+<tr><td><code>dsh-client-ui-settings-models</code></td><td>3</td><td>模型供应商卡片</td></tr>
+<tr><td><code>dsh-client-ui-deliverables</code> / <code>ui-tool</code></td><td>4</td><td>交付物操作、工具调用视图</td></tr>
+<tr><td>其余 8 个包（approval / model-selection / user-questions / trajectory / renderer / subagent / sidebar-files / cordis）</td><td>8</td><td>审批卡、模型名、提问、轨迹、根节点、子代理、文件树、Cordis 工具视图</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3 id="map-diagrams">位置图</h3>
+<p>六张图按「外壳 → 侧栏 → 主区 → 输入区 → 右栏 → 设置/插件」依次展开，图上的名字就是可直接注册的插槽名。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 1000 470" role="img" aria-label="全局外壳与三栏框架插槽位置">
+  <defs><style>
+    .f1{fill:#fff;stroke:#cfd8e6;stroke-width:1.4}.f2{fill:#f4f7fc;stroke:#dbe2ec;stroke-width:1.2}
+    .f3{fill:#eef3ff;stroke:#b9ccff;stroke-width:1.3}.f4{fill:#e9f8f2;stroke:#b7e4d2;stroke-width:1.3}
+    .f5{fill:#fff5e6;stroke:#f0d3a4;stroke-width:1.3;stroke-dasharray:5 4}
+    .t1{font:600 12.5px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+    .t2{font:11px ui-monospace,Menlo,monospace;fill:#243044}
+    .t3{font:11px -apple-system,"PingFang SC",sans-serif;fill:#66707f}
+  </style></defs>
+
+  <rect class="f1" x="14" y="14" width="972" height="442" rx="16" fill="#fbfcfe"/>
+  <text class="t3" x="32" y="38">浏览器窗口（root · single · root：官方 renderer 的根节点）</text>
+
+  <!-- shell edges -->
+  <rect class="f3" x="32" y="52" width="120" height="26" rx="7"/>
+  <text class="t2" x="42" y="70">shell.leading</text>
+  <rect class="f3" x="848" y="52" width="120" height="26" rx="7"/>
+  <text class="t2" x="858" y="70">shell.overlay</text>
+  <rect class="f3" x="32" y="420" width="120" height="26" rx="7"/>
+  <text class="t2" x="42" y="438">shell.bottom</text>
+  <rect class="f5" x="180" y="52" width="150" height="26" rx="7"/>
+  <text class="t2" x="190" y="70">shell.quota-notice</text>
+
+  <!-- sidebar -->
+  <rect class="f2" x="32" y="92" width="180" height="316" rx="12"/>
+  <text class="t1" x="44" y="114">sidebar</text>
+  <text class="t3" x="44" y="132">single · root</text>
+  <text class="t3" x="44" y="152">品牌 / 面板 / 工作区</text>
+
+  <!-- main -->
+  <rect class="f2" x="232" y="92" width="520" height="316" rx="12"/>
+  <text class="t1" x="246" y="114">main（keyed · root）</text>
+  <text class="t3" x="246" y="132">键 = 侧栏条目 id；点哪个面板就换哪个 key</text>
+  <rect class="f4" x="250" y="148" width="484" height="244" rx="10"/>
+  <text class="t2" x="262" y="170">main['conversation']</text>
+  <text class="t3" x="262" y="188">single · session-maybe —— 官方会话外壳占住这一格</text>
+
+  <!-- right bar -->
+  <rect class="f2" x="772" y="92" width="196" height="316" rx="12"/>
+  <text class="t1" x="784" y="114">rightbar</text>
+  <text class="t3" x="784" y="132">single · root</text>
+  <rect class="f4" x="788" y="148" width="164" height="120" rx="10"/>
+  <text class="t2" x="798" y="170">rightbar.session</text>
+  <text class="t3" x="798" y="188">single · session</text>
+
+  <!-- toast -->
+  <rect class="f5" x="700" y="420" width="180" height="26" rx="7"/>
+  <text class="t2" x="710" y="438">workspace.toast</text>
+
+  <text class="t3" x="246" y="416">↑ 三栏之外的所有浮层都走 shell.overlay（list·root）</text>
+</svg>
+<div class="cap">图 3 · 外壳与三栏：<code>root</code> 在最外层，三栏由 <code>sidebar</code> / <code>main</code> / <code>rightbar</code> 占位，四个边角座位挂在 <code>shell.*</code>。</div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 1000 430" role="img" aria-label="左侧栏插槽位置">
+  <defs><style>
+    .g1{fill:#fff;stroke:#cfd8e6;stroke-width:1.3}.g2{fill:#eef3ff;stroke:#b9ccff;stroke-width:1.2}
+    .g3{fill:#e9f8f2;stroke:#b7e4d2;stroke-width:1.2}.g4{fill:#f4f7fc;stroke:#dbe2ec;stroke-width:1.1}
+    .tt{font:600 12px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+    .mm{font:10.5px ui-monospace,Menlo,monospace;fill:#243044}
+    .ss{font:10.5px -apple-system,"PingFang SC",sans-serif;fill:#66707f}
+  </style></defs>
+
+  <rect class="g1" x="20" y="20" width="330" height="390" rx="14" fill="#fbfcfe"/>
+  <text class="tt" x="34" y="44">左栏（展开态）</text>
+
+  <!-- brand -->
+  <rect class="g2" x="34" y="56" width="302" height="44" rx="9"/>
+  <text class="mm" x="44" y="76">sidebar.brand.mark / .name</text>
+  <text class="ss" x="44" y="92">品牌标识与名称（单占位，各自独立）</text>
+
+  <rect class="g2" x="34" y="108" width="302" height="30" rx="8"/>
+  <text class="mm" x="44" y="128">sidebar.toggle.badge</text>
+
+  <!-- panellist -->
+  <rect class="g3" x="34" y="146" width="302" height="96" rx="9"/>
+  <text class="mm" x="44" y="166">sidebar.panellist（list · root）</text>
+  <text class="ss" x="44" y="184">每个 id = 一个 main key，图标由注册者提供</text>
+  <rect class="g4" x="44" y="192" width="120" height="40" rx="7"/>
+  <text class="mm" x="52" y="217">…其中一行</text>
+  <rect class="g2" x="176" y="192" width="160" height="40" rx="7"/>
+  <text class="mm" x="184" y="217">sidebar.panellist.actions</text>
+
+  <!-- workspaces -->
+  <rect class="g3" x="34" y="250" width="302" height="86" rx="9"/>
+  <text class="mm" x="44" y="270">sidebar.workspaces（single · root）</text>
+  <text class="ss" x="44" y="288">整个会话浏览区：搜索、分组、行、菜单</text>
+  <rect class="g4" x="44" y="296" width="282" height="34" rx="7"/>
+  <text class="mm" x="52" y="310">session.row.leading / session.row.hover</text>
+  <text class="mm" x="52" y="324">workspaces.session.row.action / session.menu.item</text>
+
+  <!-- chat convo -->
+  <rect class="g2" x="34" y="344" width="302" height="26" rx="7"/>
+  <text class="mm" x="44" y="362">sidebar.chat.conversation</text>
+
+  <!-- settings / footer -->
+  <rect class="g2" x="34" y="376" width="180" height="26" rx="7"/>
+  <text class="mm" x="44" y="394">sidebar.settings</text>
+
+  <text class="ss" x="480" y="70">同级还有两个 root 座位：</text>
+  <rect class="g2" x="480" y="82" width="300" height="34" rx="8"/>
+  <text class="mm" x="492" y="104">sidebar.workspaces.directoryFlow</text>
+  <rect class="g2" x="480" y="122" width="300" height="34" rx="8"/>
+  <text class="mm" x="492" y="144">sidebar.footer.action（list）</text>
+  <text class="ss" x="480" y="180">四个会话行座位都是 list 插槽：</text>
+  <text class="mm" x="480" y="200">session.row.leading / session.row.hover</text>
+  <text class="mm" x="480" y="218">workspaces.session.row.action / session.menu.item</text>
+</svg>
+<div class="cap">图 4 · 左栏：品牌两格 + 面板图标列表 + 工作区/会话浏览 + 设置与底部动作。</div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 1000 470" role="img" aria-label="主区：空态、会话头部、消息流">
+  <defs><style>
+    .h1{fill:#fff;stroke:#cfd8e6;stroke-width:1.3}.h2{fill:#eef3ff;stroke:#b9ccff;stroke-width:1.2}
+    .h3{fill:#e9f8f2;stroke:#b7e4d2;stroke-width:1.2}.h4{fill:#fff5e6;stroke:#f0d3a4;stroke-width:1.2}
+    .tt{font:600 12px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+    .mm{font:10.5px ui-monospace,Menlo,monospace;fill:#243044}
+    .ss{font:10.5px -apple-system,"PingFang SC",sans-serif;fill:#66707f}
+  </style></defs>
+
+  <!-- empty state -->
+  <rect class="h1" x="20" y="20" width="470" height="200" rx="12" fill="#fbfcfe"/>
+  <text class="tt" x="34" y="44">空态（没有会话时）</text>
+  <rect class="h2" x="34" y="56" width="442" height="30" rx="8"/>
+  <text class="mm" x="44" y="76">conversation.hero.brand.mark</text>
+  <rect class="h2" x="34" y="94" width="216" height="30" rx="8"/>
+  <text class="mm" x="44" y="114">hero.workspace</text>
+  <rect class="h2" x="258" y="94" width="218" height="30" rx="8"/>
+  <text class="mm" x="268" y="114">hero.workspace.directoryFlow</text>
+  <rect class="h2" x="34" y="132" width="216" height="30" rx="8"/>
+  <text class="mm" x="44" y="152">hero.agentPreset</text>
+  <rect class="h2" x="258" y="132" width="218" height="30" rx="8"/>
+  <text class="mm" x="268" y="152">hero.options（list）</text>
+  <text class="ss" x="34" y="188">空态里没有会话，所以这几个座位都是 root / session-maybe</text>
+
+  <!-- header -->
+  <rect class="h1" x="20" y="240" width="470" height="210" rx="12" fill="#fbfcfe"/>
+  <text class="tt" x="34" y="264">会话头部</text>
+  <rect class="h3" x="34" y="276" width="442" height="34" rx="8"/>
+  <text class="mm" x="44" y="297">conversation.header / conversation.session.header</text>
+  <rect class="h2" x="34" y="318" width="150" height="28" rx="7"/>
+  <text class="mm" x="44" y="337">header.leading</text>
+  <rect class="h2" x="192" y="318" width="180" height="28" rx="7"/>
+  <text class="mm" x="202" y="337">session.header.actions</text>
+  <rect class="h2" x="380" y="318" width="96" height="28" rx="7"/>
+  <text class="mm" x="390" y="337">.corner</text>
+  <rect class="h2" x="34" y="352" width="150" height="28" rx="7"/>
+  <text class="mm" x="44" y="371">.lineage</text>
+  <rect class="h2" x="192" y="352" width="180" height="28" rx="7"/>
+  <text class="mm" x="202" y="371">.utilities（list）</text>
+  <rect class="h2" x="380" y="352" width="96" height="28" rx="7"/>
+  <text class="mm" x="390" y="371">.views.actions</text>
+  <rect class="h2" x="34" y="388" width="442" height="28" rx="7"/>
+  <text class="mm" x="44" y="407">conversation.view（list） / conversation.content / conversation.session</text>
+
+  <!-- chat -->
+  <rect class="h1" x="520" y="20" width="460" height="430" rx="12" fill="#fbfcfe"/>
+  <text class="tt" x="534" y="44">消息流（会话内容）</text>
+  <rect class="h3" x="534" y="56" width="432" height="30" rx="8"/>
+  <text class="mm" x="544" y="76">conversation.chat.flow</text>
+
+  <rect class="h4" x="534" y="94" width="432" height="64" rx="8"/>
+  <text class="mm" x="544" y="114">conversation.chat.node（keyed）</text>
+  <text class="ss" x="544" y="132">按消息节点类型分发；key 决定用哪个渲染器</text>
+  <text class="ss" x="544" y="148">user.text.node / chat.commandview / chat.reasoning.body</text>
+
+  <rect class="h2" x="534" y="166" width="210" height="28" rx="7"/>
+  <text class="mm" x="544" y="185">chat.user.images / message.images</text>
+  <rect class="h2" x="752" y="166" width="214" height="28" rx="7"/>
+  <text class="mm" x="762" y="185">chat.assistant-actions</text>
+
+  <rect class="h2" x="534" y="202" width="432" height="28" rx="7"/>
+  <text class="mm" x="544" y="221">tool.call.toolview（keyed） · tool.call.images · tool.view.cordis</text>
+
+  <rect class="h2" x="534" y="238" width="210" height="28" rx="7"/>
+  <text class="mm" x="544" y="257">conversation.approval.detail</text>
+  <rect class="h2" x="752" y="238" width="214" height="28" rx="7"/>
+  <text class="mm" x="762" y="257">plan-review.actions（list）</text>
+
+  <rect class="h2" x="534" y="274" width="432" height="28" rx="7"/>
+  <text class="mm" x="544" y="293">conversation.chat.turnTail（list） · trajectory.images</text>
+
+  <rect class="h2" x="534" y="310" width="432" height="28" rx="7"/>
+  <text class="mm" x="544" y="329">deliverables.file.actions / review.file.actions（list）</text>
+
+  <text class="ss" x="534" y="362">每一条消息、每一个工具卡片、每一个审批卡，</text>
+  <text class="ss" x="534" y="380">都是独立插槽 —— 这就是「不改壳也能改对话」的原因。</text>
+</svg>
+<div class="cap">图 5 · 主区：空态（左）与会话（右）。注意会话内容全部由 <code>conversation.chat.*</code> 系列插槽承载。</div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 1000 430" role="img" aria-label="输入区 composer 插槽位置">
+  <defs><style>
+    .c1{fill:#fff;stroke:#cfd8e6;stroke-width:1.3}.c2{fill:#eef3ff;stroke:#b9ccff;stroke-width:1.2}
+    .c3{fill:#e9f8f2;stroke:#b7e4d2;stroke-width:1.2}.c4{fill:#fff5e6;stroke:#f0d3a4;stroke-width:1.2}
+    .tt{font:600 12px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+    .mm{font:10.5px ui-monospace,Menlo,monospace;fill:#243044}
+    .ss{font:10.5px -apple-system,"PingFang SC",sans-serif;fill:#66707f}
+  </style></defs>
+
+  <text class="ss" x="20" y="26">输入卡片四周的座位（从上到下）</text>
+
+  <rect class="c3" x="20" y="36" width="600" height="52" rx="9"/>
+  <text class="mm" x="32" y="58">conversation.input.dock（list · session）</text>
+  <text class="ss" x="32" y="76">owner: InputZone { session, input } —— 卡片上方的整宽条带</text>
+
+  <rect class="c4" x="20" y="96" width="600" height="46" rx="9"/>
+  <text class="mm" x="32" y="117">conversation.input.overlay（list · session）</text>
+  <text class="ss" x="32" y="133">浮动层：渲染在 composer card 内部</text>
+
+  <rect class="c1" x="20" y="150" width="600" height="150" rx="12"/>
+  <text class="tt" x="32" y="172">composer card</text>
+  <rect class="c2" x="32" y="184" width="150" height="46" rx="8"/>
+  <text class="mm" x="42" y="204">input.left</text>
+  <text class="ss" x="42" y="220">list · session</text>
+  <rect class="c1" x="192" y="184" width="240" height="46" rx="8" fill="#f7f9fc"/>
+  <text class="ss" x="202" y="212">原生输入区</text>
+  <rect class="c2" x="442" y="184" width="166" height="46" rx="8"/>
+  <text class="mm" x="452" y="204">input.right</text>
+  <text class="ss" x="452" y="220">list · session</text>
+
+  <rect class="c2" x="32" y="240" width="140" height="46" rx="8"/>
+  <text class="mm" x="42" y="260">input.model</text>
+  <text class="ss" x="42" y="276">.model.label</text>
+  <rect class="c2" x="180" y="240" width="130" height="46" rx="8"/>
+  <text class="mm" x="190" y="260">input.plan</text>
+  <rect class="c2" x="318" y="240" width="140" height="46" rx="8"/>
+  <text class="mm" x="328" y="260">input.permission</text>
+  <rect class="c2" x="466" y="240" width="142" height="46" rx="8"/>
+  <text class="mm" x="476" y="260">input.activity</text>
+
+  <rect class="c3" x="20" y="310" width="600" height="44" rx="9"/>
+  <text class="mm" x="32" y="331">conversation.composer.dock（list · session）</text>
+  <text class="ss" x="32" y="347">卡片下方的环境条目</text>
+
+  <rect class="c2" x="650" y="36" width="330" height="34" rx="8"/>
+  <text class="mm" x="662" y="57">conversation.input.attachments</text>
+  <rect class="c2" x="650" y="78" width="330" height="34" rx="8"/>
+  <text class="mm" x="662" y="99">conversation.composer.bar</text>
+  <rect class="c4" x="650" y="120" width="330" height="34" rx="8"/>
+  <text class="mm" x="662" y="141">conversation.composer（chain）</text>
+  <rect class="c2" x="650" y="162" width="330" height="34" rx="8"/>
+  <text class="mm" x="662" y="183">conversation.header.leading</text>
+  <text class="ss" x="650" y="214">chain 插槽用选择器路由：</text>
+  <text class="ss" x="650" y="232">select(owner) 返回非空即接管，</text>
+  <text class="ss" x="650" y="250">全部返回 null 才用官方 Composer。</text>
+</svg>
+<div class="cap">图 6 · 输入区：<code>input.left</code> 就是「输入框左侧控件」的位置（expert-team 用的就是它）。</div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 1000 420" role="img" aria-label="右侧栏、设置、插件插槽位置">
+  <defs><style>
+    .r1{fill:#fff;stroke:#cfd8e6;stroke-width:1.3}.r2{fill:#eef3ff;stroke:#b9ccff;stroke-width:1.2}
+    .r3{fill:#e9f8f2;stroke:#b7e4d2;stroke-width:1.2}
+    .tt{font:600 12px -apple-system,"PingFang SC",sans-serif;fill:#0e1116}
+    .mm{font:10.5px ui-monospace,Menlo,monospace;fill:#243044}
+    .ss{font:10.5px -apple-system,"PingFang SC",sans-serif;fill:#66707f}
+  </style></defs>
+
+  <!-- right sidebar -->
+  <rect class="r1" x="20" y="20" width="310" height="380" rx="12" fill="#fbfcfe"/>
+  <text class="tt" x="34" y="44">右侧栏</text>
+  <rect class="r2" x="34" y="56" width="282" height="30" rx="8"/>
+  <text class="mm" x="44" y="76">sidebar.right.pane.tab（keyed）</text>
+  <rect class="r2" x="34" y="92" width="282" height="30" rx="8"/>
+  <text class="mm" x="44" y="112">sidebar.right.pane.tab.title</text>
+  <rect class="r2" x="34" y="128" width="282" height="30" rx="8"/>
+  <text class="mm" x="44" y="148">sidebar.right.tab.menu.item（list）</text>
+  <rect class="r3" x="34" y="164" width="282" height="52" rx="8"/>
+  <text class="mm" x="44" y="184">sidebar.right.tab.guide（chain）</text>
+  <text class="ss" x="44" y="202">.guide.entry（keyed） / .guide.actions（list）</text>
+  <rect class="r2" x="34" y="222" width="282" height="30" rx="8"/>
+  <text class="mm" x="44" y="242">sidebar.right.tab.document（keyed）</text>
+  <rect class="r2" x="34" y="258" width="282" height="30" rx="8"/>
+  <text class="mm" x="44" y="278">.document.action / .actions（list）</text>
+  <rect class="r2" x="34" y="294" width="282" height="30" rx="8"/>
+  <text class="mm" x="44" y="314">.document.office.pdf / .unpreviewable</text>
+  <rect class="r2" x="34" y="330" width="282" height="30" rx="8"/>
+  <text class="mm" x="44" y="350">sidebar.right.tab.files.actions（list）</text>
+
+  <!-- settings -->
+  <rect class="r1" x="350" y="20" width="300" height="380" rx="12" fill="#fbfcfe"/>
+  <text class="tt" x="364" y="44">设置</text>
+  <rect class="r2" x="364" y="56" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="75">settings.launcher / .trigger</text>
+  <rect class="r2" x="364" y="90" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="109">settings.header / .action / .close</text>
+  <rect class="r2" x="364" y="124" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="143">settings.section（list）</text>
+  <rect class="r2" x="364" y="158" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="177">settings.general.item（list）</text>
+  <rect class="r2" x="364" y="192" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="211">settings.onboarding（list）</text>
+  <rect class="r2" x="364" y="226" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="245">settings.plugins.tab（list）</text>
+  <rect class="r2" x="364" y="260" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="279">models.provider-card（keyed）</text>
+  <rect class="r2" x="364" y="294" width="272" height="28" rx="7"/>
+  <text class="mm" x="374" y="313">models.sign-in / models.footer</text>
+
+  <!-- plugins -->
+  <rect class="r1" x="666" y="20" width="314" height="380" rx="12" fill="#fbfcfe"/>
+  <text class="tt" x="680" y="44">插件市场 / 管理</text>
+  <rect class="r2" x="680" y="56" width="286" height="28" rx="7"/>
+  <text class="mm" x="690" y="75">plugins.tab（list）</text>
+  <rect class="r2" x="680" y="90" width="286" height="28" rx="7"/>
+  <text class="mm" x="690" y="109">plugins.item（list）</text>
+  <rect class="r2" x="680" y="124" width="286" height="28" rx="7"/>
+  <text class="mm" x="690" y="143">plugins.row.config（keyed）</text>
+  <rect class="r2" x="680" y="158" width="286" height="28" rx="7"/>
+  <text class="mm" x="690" y="177">plugins.add.actions（list）</text>
+  <rect class="r2" x="680" y="192" width="286" height="28" rx="7"/>
+  <text class="mm" x="690" y="211">plugins.bundle.activation（keyed）</text>
+  <rect class="r2" x="680" y="226" width="286" height="28" rx="7"/>
+  <text class="mm" x="690" y="245">plugins.bundle.config（keyed）</text>
+  <rect class="r2" x="680" y="260" width="286" height="28" rx="7"/>
+  <text class="mm" x="690" y="279">plugins.detail.actions / .badge / .section</text>
+  <text class="ss" x="680" y="316">这三组都属于「覆盖层页面」：</text>
+  <text class="ss" x="680" y="334">右栏按会话挂载，设置与插件是全局弹层。</text>
+</svg>
+<div class="cap">图 7 · 右栏 / 设置 / 插件市场：三个独立的视觉区域，各自的插槽互不重叠。</div>
+</div>
+
+<div class="note">
+  <span class="label">怎么读这张表</span>
+  <b>kind</b> 决定能挂几个（single / list / keyed / chain）；<b>scope</b> 决定拿到什么数据（root / session-maybe / session）；<b>owner</b> 是父级在渲染点传给你的 props 类型。三者共同决定了你的组件签名。
+</div>
+
+<h3 id="map-list">分组清单</h3>
+
+<h3 id="map-shell">① 全局外壳（6）</h3>
+<p class="area-note">窗口级容器：在正常页面结构之外，决定最外层边框与常驻浮层。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>root</code><div class="pkg">renderer</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">RootOwnerProps</div></td><td>官方渲染树的根节点，由 ui-layout 的 AppFrame 占用；「不要」在这里注册——single 插槽会整页遮蔽官方框架。</td></tr>
+<tr><td><code>shell.leading</code><div class="pkg">layout</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">—</div></td><td>框架左上角的窗口铬座位，仅在侧栏完全隐藏时挂载（macOS 折叠态）。</td></tr>
+<tr><td><code>shell.bottom</code><div class="pkg">layout</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">—</div></td><td>三栏之下的整宽底部内容；渲染高度会压缩三栏可用高度，空内容不占位。</td></tr>
+<tr><td><code>shell.overlay</code><div class="pkg">layout</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">—</div></td><td>全框架浮动层，在所有列之上且默认可点击穿透；徽标、Toast、状态胶囊放这里，新增即并列。</td></tr>
+<tr><td><code>shell.quota-notice</code><div class="pkg">chat</div></td><td class="meta"><span class="tag w">chain</span> <span class="scope root">root</span><div class="own">QuotaNoticeOwnerProps</div></td><td>全框架额度提示链：第一条命中的选择器接管，全部拒绝时显示通用警告 Toast。</td></tr>
+<tr><td><code>workspace.toast</code><div class="pkg">workspace</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope root">root</span><div class="own">WorkspaceToastOwnerProps</div></td><td>按业务判别键选中的工作区通知。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-frame">② 三栏框架（4）</h3>
+<p class="area-note">左栏、中栏、右栏三个纵向轨道；`main` 是键控插槽，决定中央显示哪一页。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>sidebar</code><div class="pkg">layout</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SidebarOwnerProps</div></td><td>整个左栏，由 ui-sidebar 占用；登录/面板内部座位才是扩展点——在这里注册会整体替换导航栏。</td></tr>
+<tr><td><code>main</code><div class="pkg">layout</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope root">root</span><div class="own">—</div></td><td>按侧栏条目 id 选中的中央面板；保留 key <code>conversation</code> 承载会话，其他 key 不绑定会话。</td></tr>
+<tr><td><code>main.conversation</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session-maybe">session-maybe</span><div class="own">—</div></td><td>位于 root 级 main 面板条目之下的会话外壳。</td></tr>
+<tr><td><code>rightbar</code><div class="pkg">layout</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">RightbarOwnerProps</div></td><td>右列：中栏为它让出的轨道，或什么都不占；由右侧栏占用，是否显示由占用者自己记录。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-sidebar">③ 左侧栏（14）</h3>
+<p class="area-note">品牌、面板列表、工作区与会话浏览、设置入口、底部动作。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>sidebar.brand.mark</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SidebarBrandMarkOwnerProps</div></td><td>品牌图标，展开行与折叠轨都会用到。</td></tr>
+<tr><td><code>sidebar.brand.name</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SidebarBrandNameOwnerProps</div></td><td>展开态下的品牌名称，壳自带文字兜底。</td></tr>
+<tr><td><code>sidebar.toggle.badge</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">Record&lt;never, never&gt;</div></td><td>折叠态展开按钮里的非交互通知点。</td></tr>
+<tr><td><code>sidebar.panellist</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SidebarPanelIconOwnerProps</div></td><td>全局面板图标列表；每个 id 对应一个 main 面板，按钮与无障碍由侧栏负责。</td></tr>
+<tr><td><code>sidebar.panellist.actions</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SidebarPanelActionsOwnerProps</div></td><td>面板列表「更多」菜单的行；有注册才显示「更多」。</td></tr>
+<tr><td><code>sidebar.workspaces</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SidebarSectionOwnerProps</div></td><td>工作区/会话浏览区：分区头、搜索、分组会话列表与所有工作区弹窗。</td></tr>
+<tr><td><code>sidebar.workspaces.directoryFlow</code><div class="pkg">workspace</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">DirectoryFlowOwnerProps</div></td><td>侧栏浏览区下方的目录流占位。</td></tr>
+<tr><td><code>sidebar.session.row.leading</code><div class="pkg">workspace</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SessionRowScheduleOwnerProps</div></td><td>会话行标题前 16px 的首饰位；有状态点（待交互/新消息/进行中）时该位被状态点占用。</td></tr>
+<tr><td><code>sidebar.session.row.hover</code><div class="pkg">workspace</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SessionRowScheduleOwnerProps</div></td><td>会话行悬浮卡中、相对时间与状态行之间的区域。</td></tr>
+<tr><td><code>sidebar.workspaces.session.row.action</code><div class="pkg">workspace</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SessionRowOwnerProps</div></td><td>会话行末尾的悬浮按钮；官方 archive=100、pin=200。</td></tr>
+<tr><td><code>sidebar.workspaces.session.menu.item</code><div class="pkg">workspace</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SessionRowOwnerProps</div></td><td>会话「…」菜单的行；官方 pin/rename/fork/archive/session-id 已占用 100–450。</td></tr>
+<tr><td><code>sidebar.chat.conversation</code><div class="pkg">subagent</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">—</div></td><td>侧栏聊天页签里承载的一次会话。</td></tr>
+<tr><td><code>sidebar.settings</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SidebarSettingsOwnerProps</div></td><td>侧栏底部的设置座位；ui-settings 在此注册触发行 + 弹层，侧栏只传列状态。</td></tr>
+<tr><td><code>sidebar.footer.action</code><div class="pkg">sidebar</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SidebarFooterActionOwnerProps</div></td><td>侧栏底部、设置旁边的可选动作。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-hero">④ 空态（Hero）（5）</h3>
+<p class="area-note">还没有会话时中央区的品牌、工作区选择与快捷选项。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>conversation.hero.brand.mark</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">HeroBrandMarkOwnerProps</div></td><td>空会话标题上方的品牌标识。</td></tr>
+<tr><td><code>conversation.hero.workspace</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">EmptyWorkspaceOwnerProps</div></td><td>空态 Hero 展示的工作区选择器。</td></tr>
+<tr><td><code>conversation.hero.workspace.directoryFlow</code><div class="pkg">workspace</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">DirectoryFlowOwnerProps</div></td><td>空态工作区选择器下方的目录流占位。</td></tr>
+<tr><td><code>conversation.hero.agentPreset</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session-maybe">session-maybe</span><div class="own">HeroAgentPresetOwnerProps</div></td><td>新会话预置的 Agent 预设控件。</td></tr>
+<tr><td><code>conversation.hero.options</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">—</div></td><td>新会话行内右对齐的紧凑选项（仅在有会话时渲染）。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-header">⑤ 会话头部与视图（11）</h3>
+<p class="area-note">会话标题行、操作按钮、视图切换，以及承载消息流的最外层容器。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>conversation.header</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session-maybe">session-maybe</span><div class="own">—</div></td><td>常驻导航容器，没有选中会话时也在。</td></tr>
+<tr><td><code>conversation.header.leading</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">ConversationHeaderLeadingOwnerProps</div></td><td>会话标题之前的全局导航位，无会话时同样可用。</td></tr>
+<tr><td><code>conversation.session</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">inline</div></td><td>严格绑定单个会话的会话主体。</td></tr>
+<tr><td><code>conversation.session.header</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">inline</div></td><td>严格绑定单个会话的标题、操作与视图导航。</td></tr>
+<tr><td><code>conversation.session.header.actions</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">ConversationHeaderActionOwnerProps</div></td><td>标题旁按升序排列的会话操作。</td></tr>
+<tr><td><code>conversation.session.header.utilities</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">ConversationHeaderActionOwnerProps</div></td><td>右对齐、按升序排列的会话工具按钮。</td></tr>
+<tr><td><code>conversation.session.header.corner</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">ConversationHeaderCornerOwnerProps</div></td><td>头部最右侧角落的一个控件（占进头部内边距）；占位者无内容时该角不占位。</td></tr>
+<tr><td><code>conversation.session.header.lineage</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">ConversationHeaderLineageOwnerProps</div></td><td>某个会话面包屑标题的可选替换。</td></tr>
+<tr><td><code>conversation.session.header.views.actions</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">ConversationViewActionsOwnerProps</div></td><td>视图页签行「更多」菜单的行；有注册才显示「更多」。</td></tr>
+<tr><td><code>conversation.view</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">ConvViewOwnerProps</div></td><td>已注册的会话目标视图，同一时刻只渲染一个。</td></tr>
+<tr><td><code>conversation.content</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session-maybe">session-maybe</span><div class="own">—</div></td><td>可复用的会话内容组件，由展示型宿主实例化。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-chat">⑥ 消息流（12）</h3>
+<p class="area-note">每一条用户消息、助手回复、工具调用与审批卡的位置，全部是独立插槽。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>conversation.chat.flow</code><div class="pkg">chat</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">ChatFlowOwnerProps</div></td><td>有序的聊天行与本地回显，带可视区可见性钩子。</td></tr>
+<tr><td><code>conversation.chat.node</code><div class="pkg">chat</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">ChatNodeOwnerProps</div></td><td>按 <code>ChatNodeKind</code> 分派的消息节点渲染器；重复 key 覆盖，未占用的 kind 不渲染该行。</td></tr>
+<tr><td><code>conversation.chat.turnTail</code><div class="pkg">chat</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">TurnTailOwnerProps</div></td><td>一轮对话结束、操作行之前的有序特性区；无内容时返回 null。</td></tr>
+<tr><td><code>conversation.chat.assistant-actions</code><div class="pkg">chat</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">AssistantActionOwnerProps</div></td><td>一条已完成的助手消息下方的有序操作；按消息 id 去重，同 id 会覆盖原条目。</td></tr>
+<tr><td><code>conversation.chat.commandview</code><div class="pkg">chat</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">CommandRowOwnerProps</div></td><td>按命令名分派的命令行渲染器；没有占用的 key 使用通用卡片。</td></tr>
+<tr><td><code>conversation.chat.reasoning.body</code><div class="pkg">chat</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">ReasoningBodyOwnerProps</div></td><td>展开的推理正文（原始文本 + 可展示文本）；官方条目 priority 100，更小的值可替换它。</td></tr>
+<tr><td><code>conversation.chat.message.images</code><div class="pkg">chat</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">MessageImagesOwnerProps</div></td><td>一组连续消息图片的渲染器；注册即替换官方图集，不注册则不显示图片。</td></tr>
+<tr><td><code>conversation.chat.user.images</code><div class="pkg">chat</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">MessageImagesOwnerProps</div></td><td>用户消息图片（含待发送与本地回显），与助手输出图片分开替换。</td></tr>
+<tr><td><code>conversation.user.text.node</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">UserTextNodeOwnerProps</div></td><td>纯 JSON 文本节点的、由业务方自定义的内联渲染器。</td></tr>
+<tr><td><code>conversation.trajectory.images</code><div class="pkg">trajectory</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">MessageImagesOwnerProps</div></td><td>轨迹账本中一组记录图片的渲染器；注册即替换官方图集。</td></tr>
+<tr><td><code>conversation.approval.detail</code><div class="pkg">approval</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">ApprovalDetailOwnerProps</div></td><td>审批请求所关联的那次工具调用的可选详情区。</td></tr>
+<tr><td><code>conversation.plan-review.actions</code><div class="pkg">user-questions</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">inline</div></td><td>正在评审的那份计划对应的操作；批准动作仍由提问输入框负责。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-tools">⑦ 工具结果与交付物（5）</h3>
+<p class="area-note">工具调用卡片的渲染面，以及产出文件/文档的操作区。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>tool.call.toolview</code><div class="pkg">tool</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">ToolCallOwnerProps</div></td><td>按工具名分派的工具调用视图；重复 key 覆盖，未占用的 name 使用通用行。</td></tr>
+<tr><td><code>tool.call.images</code><div class="pkg">tool</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">ToolImagesOwnerProps</div></td><td>已结束的图片类工具调用的图片集，经由附件呈现插件渲染。</td></tr>
+<tr><td><code>tool.view.cordis</code><div class="pkg">cordis</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">CordisToolViewOwnerProps</div></td><td>位于最新 <code>cordis_run</code> 卡片内、由包自有的可交互区域。</td></tr>
+<tr><td><code>deliverables.file.actions</code><div class="pkg">deliverables</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">inline</div></td><td>通过会话事件坐标打开某个文件的操作。</td></tr>
+<tr><td><code>deliverables.review.file.actions</code><div class="pkg">deliverables</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">同上</div></td><td>变更文件评审页签内的同一组文件操作。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-composer">⑧ 输入区（Composer）（13）</h3>
+<p class="area-note">输入卡片四周的所有座位：上沿条带、卡内浮层、工具行左右、模型/权限选择。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>conversation.composer</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag w">chain</span> <span class="scope session">session</span><div class="own">ComposerChainProps</div></td><td>当前会话常驻输入框的选择器路由替换（chain，第一个不拒绝的条目接管）。</td></tr>
+<tr><td><code>conversation.composer.bar</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session-maybe">session-maybe</span><div class="own">ComposerBarOwnerProps</div></td><td>常驻输入框主体，包含无会话时的惰性状态。</td></tr>
+<tr><td><code>conversation.composer.dock</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">—</div></td><td>输入卡片下方的环境条目。</td></tr>
+<tr><td><code>conversation.input.dock</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">InputZone</div></td><td>输入卡片上方的整宽条目。</td></tr>
+<tr><td><code>conversation.input.overlay</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">—</div></td><td>渲染在输入卡片内部的浮动条目。</td></tr>
+<tr><td><code>conversation.input.left</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">—</div></td><td>输入工具行左侧的紧凑控件（expert-team 用的就是这里）。</td></tr>
+<tr><td><code>conversation.input.right</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">—</div></td><td>发送按钮之前的紧凑控件。</td></tr>
+<tr><td><code>conversation.input.activity</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">InputActivityOwnerProps</div></td><td>模型选择器之后的紧凑动作；可横向展开，同时保留编辑器与发送按钮。</td></tr>
+<tr><td><code>conversation.input.attachments</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session-maybe">session-maybe</span><div class="own">ComposerAttachmentsOwnerProps</div></td><td>可选的草稿附件栏与拖放目标。</td></tr>
+<tr><td><code>conversation.input.model</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">InputControlOwnerProps</div></td><td>工具行内的模型选择器；空间不足时通过两个 CSS 变量切换为紧凑显示。</td></tr>
+<tr><td><code>conversation.input.model.label</code><div class="pkg">model-selection</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">ModelLabelOwner</div></td><td>不可交互的模型名内联标签；不贡献时输入框显示目录名称。</td></tr>
+<tr><td><code>conversation.input.permission</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">InputControlOwnerProps</div></td><td>工具行内的当前会话权限控件。</td></tr>
+<tr><td><code>conversation.input.plan</code><div class="pkg">conversation</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">InputControlOwnerProps</div></td><td>工具行内的计划（Plan）控件。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-right">⑨ 右侧栏（13）</h3>
+<p class="area-note">页签条、页签内容、文档预览、文件树与页签菜单。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>rightbar.session</code><div class="pkg">sidebar-right</div></td><td class="meta"><span class="tag s">single</span> <span class="scope session">session</span><div class="own">RightbarOwnerProps &amp; { readonly active: boolean</div></td><td>由 root 级右侧栏控制器选中的会话内容。</td></tr>
+<tr><td><code>sidebar.right.pane.tab</code><div class="pkg">sidebar-right</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">—</div></td><td>右栏某个页签的主体，按该页签类型 id 分派；类型不存在时显示「无法查看」提示。</td></tr>
+<tr><td><code>sidebar.right.pane.tab.title</code><div class="pkg">sidebar-right</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">—</div></td><td>页签标题（chip 与浮动面板头部），key 与主体一致。</td></tr>
+<tr><td><code>sidebar.right.tab.guide</code><div class="pkg">sidebar-right</div></td><td class="meta"><span class="tag w">chain</span> <span class="scope session">session</span><div class="own">—</div></td><td>引导页签主体（chain）：第一个不拒绝的条目整体替换官方引导。</td></tr>
+<tr><td><code>sidebar.right.tab.guide.actions</code><div class="pkg">sidebar-right</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SidebarRightGuideActionsOwnerProps</div></td><td>引导「更多」菜单的行。</td></tr>
+<tr><td><code>sidebar.right.tab.guide.entry</code><div class="pkg">sidebar-right</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">SidebarRightGuideEntryOwnerProps</div></td><td>某个 provider 的引导卡片，官方卡片作为兜底。</td></tr>
+<tr><td><code>sidebar.right.tab.menu.item</code><div class="pkg">sidebar-right</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">SidebarRightTabMenuOwnerProps</div></td><td>某个页签操作菜单末尾的额外条目，按注册顺序排列。</td></tr>
+<tr><td><code>sidebar.right.tab.document</code><div class="pkg">sidebar-documentpreview</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">DocumentBodyOwner</div></td><td>由已注册实现 id 选中的文档正文。</td></tr>
+<tr><td><code>sidebar.right.tab.document.action</code><div class="pkg">sidebar-documentpreview</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">inline</div></td><td>文档工具栏「重新加载」之前的、渲染器专属控件。</td></tr>
+<tr><td><code>sidebar.right.tab.document.actions</code><div class="pkg">sidebar-documentpreview</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">inline</div></td><td>作用于被预览文件的工具栏贡献，渲染在预览自带控件之后。</td></tr>
+<tr><td><code>sidebar.right.tab.document.office.pdf</code><div class="pkg">sidebar-documentpreview</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope session">session</span><div class="own">DocumentBodyOwner</div></td><td>Office 转换字节对应的 PDF 呈现。</td></tr>
+<tr><td><code>sidebar.right.tab.document.unpreviewable</code><div class="pkg">sidebar-documentpreview</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">inline</div></td><td>无法预览的文件在「重试」位置提供的空态内容。</td></tr>
+<tr><td><code>sidebar.right.tab.files.actions</code><div class="pkg">sidebar-files</div></td><td class="meta"><span class="tag n">list</span> <span class="scope session">session</span><div class="own">inline</div></td><td>文件树「重新加载」之后的工作区目录操作。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-settings">⑩ 设置（12）</h3>
+<p class="area-note">设置入口、弹层头尾、通用项、插件页签、模型供应商卡片。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>settings.launcher</code><div class="pkg">settings</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SettingsLauncherOwnerProps</div></td><td>可选的侧栏账号启动器，用于打开壳自有的设置面板。</td></tr>
+<tr><td><code>settings.trigger</code><div class="pkg">settings</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SettingsTriggerOwnerProps</div></td><td>侧栏底部设置触发行的内容（图标 + 文案）；按钮外框与展开态由壳负责。</td></tr>
+<tr><td><code>settings.header</code><div class="pkg">settings</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SettingsHeaderOwnerProps</div></td><td>面板标题文本位；不贡献时标题为空。</td></tr>
+<tr><td><code>settings.action</code><div class="pkg">settings</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SettingsHeaderOwnerProps</div></td><td>设置内容区头部、关闭按钮之前的可选操作。</td></tr>
+<tr><td><code>settings.close</code><div class="pkg">settings</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">SettingsHeaderOwnerProps</div></td><td>关闭按钮的读屏标签文本（按钮本身的图标、几何与焦点由壳负责）。</td></tr>
+<tr><td><code>settings.section</code><div class="pkg">settings</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SettingsSectionOwnerProps</div></td><td>一个设置页 = 一条 list 条目；<code>id</code>/<code>order</code>/<code>label</code> 决定导航身份与位置。</td></tr>
+<tr><td><code>settings.general.item</code><div class="pkg">settings</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SettingsGeneralItemOwnerProps</div></td><td>「通用」分区里的一行偏好设置；文案、当前值与写路径都由注册者负责。</td></tr>
+<tr><td><code>settings.onboarding</code><div class="pkg">settings</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SettingsOnboardingOwnerProps</div></td><td>由设置特性贡献的引导步骤，壳一次只挂载一个。</td></tr>
+<tr><td><code>settings.plugins.tab</code><div class="pkg">settings</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">SettingsPluginsTabOwnerProps</div></td><td>「插件」设置分区内的一个页面，按页签呈现。</td></tr>
+<tr><td><code>settings.models.footer</code><div class="pkg">settings-models</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">ModelsFooterOwnerProps</div></td><td>供应商行与新增控件之后的扩展区。</td></tr>
+<tr><td><code>settings.models.provider-card</code><div class="pkg">settings-models</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope root">root</span><div class="own">ProviderCardExtrasOwnerProps</div></td><td>每张供应商卡片（含首启态与新增草稿）的适配扩展区。</td></tr>
+<tr><td><code>settings.models.sign-in</code><div class="pkg">settings-models</div></td><td class="meta"><span class="tag s">single</span> <span class="scope root">root</span><div class="own">inline</div></td><td>凭据编辑器之前的可选登录方式。</td></tr>
+</tbody></table></div>
+
+<h3 id="map-plugins">⑪ 插件市场 / 插件管理（9）</h3>
+<p class="area-note">插件列表、详情、配置与安装动作。</p>
+<div class="tablewrap"><table class="slots">
+<thead><tr><th>插槽</th><th>契约</th><th>位置与用途</th></tr></thead>
+<tbody>
+<tr><td><code>plugins.tab</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">PluginTabProps</div></td><td>页面自带「已安装」之后的新页签，例如「发现」。</td></tr>
+<tr><td><code>plugins.item</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">PluginConfigViewProps</div></td><td>插件页「官方」分组里的一张卡片，同时也是该插件自己的页面主体；官方设置页已占用此位。</td></tr>
+<tr><td><code>plugins.add.actions</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">PluginAddActionsProps</div></td><td>安装之后追加的菜单按钮行（72px 高，标题 + 最多两行描述）。</td></tr>
+<tr><td><code>plugins.bundle.activation</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope root">root</span><div class="own">PluginActivationOwnerProps</div></td><td>用户从列表启用某个 bundle 之后的引导内容（按 npm 包名 keyed）。</td></tr>
+<tr><td><code>plugins.bundle.config</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope root">root</span><div class="own">PluginConfigViewProps</div></td><td>某个 bundle 自身的配置区，渲染在它页面的描述与行之间。</td></tr>
+<tr><td><code>plugins.detail.actions</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">PluginDetailProps</div></td><td>详情页头部的控件，排在页面自带的开关与卸载之前。</td></tr>
+<tr><td><code>plugins.detail.badge</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">PluginDetailProps</div></td><td>详情页标题旁的标签，排在版本、beta、问题标签之后。</td></tr>
+<tr><td><code>plugins.detail.section</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag n">list</span> <span class="scope root">root</span><div class="own">PluginDetailProps</div></td><td>详情页正文下方的分区：bundle 页取在行之后，其他页取在配置之后。</td></tr>
+<tr><td><code>plugins.row.config</code><div class="pkg">plugin-manager</div></td><td class="meta"><span class="tag k">keyed</span> <span class="scope root">root</span><div class="own">PluginConfigViewProps</div></td><td>bundle 声明的某一行的配置页，key 为 <code>&lt;包名&gt;#&lt;行 id&gt;</code>。</td></tr>
+</tbody></table></div>
+
+<h3>选型速查</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>我想做的事</th><th>用哪个插槽</th><th>要点</th></tr></thead>
+<tbody>
+<tr><td>侧栏加一个入口</td><td><code>sidebar.panellist</code> + <code>main</code></td><td><code>id</code> 必须等于 <code>main</code> 的 <code>key</code></td></tr>
+<tr><td>输入框左侧加按钮</td><td><code>conversation.input.left</code></td><td>list，按 <code>order</code> 排序（expert-team 用它）</td></tr>
+<tr><td>输入框上沿加整宽条带</td><td><code>conversation.input.dock</code></td><td>owner 是 <code>InputZone</code>，可读草稿</td></tr>
+<tr><td>输入框内加浮层</td><td><code>conversation.input.overlay</code></td><td>自己管理开关与外部点击</td></tr>
+<tr><td>会话头部加操作</td><td><code>conversation.session.header.actions</code></td><td>list，注意官方占用 <code>-10..20</code> 的 order</td></tr>
+<tr><td>右栏加一个页签</td><td><code>sidebar.right.pane.tab</code></td><td>配合 <code>ctx.sidebarRightTabs.register</code> 声明页签</td></tr>
+<tr><td>设置里加一页</td><td><code>settings.section</code></td><td>list，root 作用域</td></tr>
+<tr><td>插件市场加一个入口</td><td><code>plugins.item</code></td><td>list，可用负 order 置顶</td></tr>
+<tr><td>全局浮层 / 提示</td><td><code>shell.overlay</code></td><td>list，root；带定位上下文</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ================= PART 3 ================= -->
+<section id="practice">
+<h2><span class="num">3</span>实战：从零到两个可运行的插件</h2>
+<p>下面所有代码都来自本项目的真实文件，可直接抄。两个示例的 <code class="inline">client.tsx</code> 全文附在各自小节末尾（含注释，未删减），可以先读注册部分再看细节。</p>
+
+<h3 id="layout">工程结构</h3>
+<figure class="code">
+  <figcaption><span class="path">dsh-starter/</span></figcaption>
+<pre><code>.
+├── package.json              <span class="c">// pnpm 脚本：build / build:one / typecheck / dev / smoke / clean</span>
+├── pnpm-workspace.yaml       <span class="c">// packages: [packages/plugins/*]</span>
+├── .npmrc                    <span class="c">// registry（本机走镜像）</span>
+├── packages/plugins/
+│   ├── starter/              <span class="c">// 侧栏图标 + 主面板</span>
+│   ├── expert-team/          <span class="c">// 输入框左侧「专家团」+ 浮层 + 跳转</span>
+│   └── host-only/            <span class="c">// 仅 Host，无 UI</span>
+├── scripts/
+│   ├── build-plugin.mjs      <span class="c">// 扫描目录，按面构建 + __ModuleLoader__ 外壳 + 类型声明</span>
+│   ├── dev.mjs               <span class="c">// 构建 → 打包 → 注册进 Profile → 启动 dsh web</span>
+│   ├── smoke.mjs             <span class="c">// 无头验收</span>
+│   ├── typecheck.mjs
+│   └── clean.mjs
+└── .dsh-home/                <span class="c">// 运行期 Home 与 Profile（生成物）</span></code></pre>
+</figure>
+
+<h3 id="starter">示例一：starter —— 侧栏图标 + 主面板</h3>
+<ol class="timeline">
+  <li><b>建包</b><code>packages/plugins/starter/package.json</code> 同时声明两个面：Host 用 <code>exports["."]</code>，浏览器用 <code>exports["./client"]</code>。</li>
+</ol>
+<figure class="code">
+  <figcaption><span class="path">packages/plugins/starter/package.json</span></figcaption>
+<pre><code>{
+  "name": "dsh-starter-plugin",
+  "type": "module",
+  "exports": {
+    ".":        { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./client": { "types": "./dist/client.d.ts", "default": "./dist/client.browser.js" }
+  },
+  "files": ["dist", "cordis.patch.yml"],
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "inject": [] }
+  }
+}</code></pre>
+</figure>
+
+<ol class="timeline" start="2">
+  <li><b>让包进入插件树</b>：<code>cordis.patch.yml</code> 一行 insert，官方插件管理器会在 Profile 里插一条 loader entry。</li>
+</ol>
+<figure class="code">
+  <figcaption><span class="path">packages/plugins/starter/cordis.patch.yml</span></figcaption>
+<pre><code>- insert:
+    - id: dsh-starter-plugin
+      name: dsh-starter-plugin</code></pre>
+</figure>
+
+<ol class="timeline" start="3">
+  <li><b>Host 面</b>：提供服务并声明生命周期（本例只提供一个简单服务）。</li>
+</ol>
+<figure class="code">
+  <figcaption><span class="path">packages/plugins/starter/src/index.ts</span></figcaption>
+<pre><code>import type { Context } from '@deepseek-ai/cordis'
+
+export const name = 'dsh-starter-plugin'
+export const inject = [] as const
+
+declare module '@deepseek-ai/cordis' {
+  interface Context { starter: { greeting(who?: string): string } }
+}
+
+export function apply(ctx: Context): void {
+  ctx.provide('starter', { greeting: (who = 'world') =&gt; `Hello, ${who}!` })
+  ctx.effect(() =&gt; {
+    ctx.logger('dsh-starter-plugin').info('ready')
+    return () =&gt; {}
+  }, 'dsh-starter-plugin.lifecycle')
+}</code></pre>
+</figure>
+
+<ol class="timeline" start="4">
+  <li><b>浏览器面</b>：两个注册，一个图标一个面板。<b>id 与 key 用同一个常量。</b></li>
+</ol>
+<figure class="code">
+  <figcaption><span class="path">packages/plugins/starter/src/client.tsx</span></figcaption>
+<pre><code>export const inject = ['slots'] as const
+const PANEL_ID = 'starter-hello'
+
+export function apply(ctx: Context): void {
+  ctx.slots.inject('sidebar.panellist', () =&gt;
+    ctx.slots.register(
+      { name: 'sidebar.panellist', id: PANEL_ID, label: '示例', order: 15 },
+      ({ size }) =&gt; &lt;StarterIcon size={size} /&gt;))    <span class="c">// owner props: { size, active }</span>
+
+  ctx.slots.inject('main', () =&gt;
+    ctx.slots.register({ name: 'main', key: PANEL_ID }, StarterPanel))
+}</code></pre>
+</figure>
+
+<ol class="timeline" start="5">
+  <li><b>类型从哪来</b>：插槽名由官方包做 declaration merging，必须 type-only import，否则 <code>SlotMap</code> 里只有 <code>root</code>。</li>
+</ol>
+<figure class="code">
+  <figcaption>编译期报错示例：不 import 时只会认 <code>'root'</code></figcaption>
+<pre><code>import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'    <span class="c">// sidebar.panellist</span>
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'     <span class="c">// main</span>
+
+<span class="c">// 报错：Argument of type '"sidebar.panellist"' is not assignable to parameter of type '"root"'</span></code></pre>
+</figure>
+
+<figure class="code full">
+  <figcaption><span class="path">packages/plugins/starter/src/client.tsx</span><span class="lines">76 行</span><span class="hint">完整文件 · 带行号 · 块内滚动</span></figcaption>
+<pre class="numbered" style="max-height:620px"><code><span class="line"><span class="c">/**</span></span><span class="line"><span class="c"> * Browser entry: assembled by the official client module loader.</span></span><span class="line"><span class="c"> *</span></span><span class="line"><span class="c"> * Only public slot APIs are used here. The shell owns layout, the sidebar</span></span><span class="line"><span class="c"> * button, accessibility and selection state; this file contributes a glyph and</span></span><span class="line"><span class="c"> * one panel body.</span></span><span class="line"><span class="c"> */</span></span><span class="line">import * as React from 'react'</span><span class="line">import type { Context } from '@deepseek-ai/cordis'</span><span class="line">import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'</span><span class="line">import type {} from '@deepseek-ai/dsh-client-ui-slots'</span><span class="line"><span class="c">// Type-only: merges `sidebar.panellist` into SlotMap.</span></span><span class="line">import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'</span><span class="line"><span class="c">// Type-only: merges `main` into SlotMap.</span></span><span class="line">import type {} from '@deepseek-ai/dsh-client-ui-layout/client'</span><span class="line"></span><span class="line">export const name = 'dsh-starter-client'</span><span class="line">export const inject = ['slots'] as const</span><span class="line"></span><span class="line"><span class="c">/** Sidebar list id === main keyed slot key, so the row actually opens this panel. */</span></span><span class="line">const PANEL_ID = 'starter-hello'</span><span class="line"></span><span class="line">function StarterIcon({ size }: { size: number }) {</span><span class="line">  return (</span><span class="line">    &lt;svg</span><span class="line">      width={size}</span><span class="line">      height={size}</span><span class="line">      viewBox="0 0 24 24"</span><span class="line">      fill="none"</span><span class="line">      stroke="currentColor"</span><span class="line">      strokeWidth={1.8}</span><span class="line">      strokeLinejoin="round"</span><span class="line">      aria-hidden="true"</span><span class="line">    &gt;</span><span class="line">      &lt;path d="M12 3l2.3 5.7L20 11l-5.7 2.3L12 19l-2.3-5.7L4 11l5.7-2.3z" /&gt;</span><span class="line">    &lt;/svg&gt;</span><span class="line">  )</span><span class="line">}</span><span class="line"></span><span class="line">function StarterPanel() {</span><span class="line">  return (</span><span class="line">    &lt;section style={{ padding: '32px 40px', maxWidth: 720, color: 'var(--dsw-alias-label-primary)' }}&gt;</span><span class="line">      &lt;p</span><span class="line">        style={{</span><span class="line">          margin: '0 0 8px',</span><span class="line">          fontSize: 12,</span><span class="line">          letterSpacing: '.12em',</span><span class="line">          textTransform: 'uppercase',</span><span class="line">          opacity: 0.6,</span><span class="line">        }}</span><span class="line">      &gt;</span><span class="line">        Starter</span><span class="line">      &lt;/p&gt;</span><span class="line">      &lt;h1 style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 650 }}&gt;第一个插槽面板&lt;/h1&gt;</span><span class="line">      &lt;p style={{ margin: 0, lineHeight: 1.7, opacity: 0.78 }}&gt;</span><span class="line">        这段内容由 &lt;code&gt;dsh-starter-plugin&lt;/code&gt; 的 &lt;code&gt;main&lt;/code&gt; 插槽注册提供。</span><span class="line">        官方 Conversation、Composer 与侧栏都没有被替换。</span><span class="line">      &lt;/p&gt;</span><span class="line">    &lt;/section&gt;</span><span class="line">  )</span><span class="line">}</span><span class="line"></span><span class="line">export function apply(ctx: Context): void {</span><span class="line">  <span class="c">// List slot: id is dedupe key + order position + accessibility label.</span></span><span class="line">  ctx.slots.inject('sidebar.panellist', () =&gt;</span><span class="line">    ctx.slots.register(</span><span class="line">      { name: 'sidebar.panellist', id: PANEL_ID, label: '示例', order: 15 },</span><span class="line">      StarterIcon,</span><span class="line">    ),</span><span class="line">  )</span><span class="line"></span><span class="line">  <span class="c">// Keyed slot: the key must equal the sidebar row id above.</span></span><span class="line">  ctx.slots.inject('main', () =&gt;</span><span class="line">    ctx.slots.register({ name: 'main', key: PANEL_ID }, StarterPanel),</span><span class="line">  )</span><span class="line">}</span></code></pre>
+</figure>
+<p class="src-note"><b>阅读顺序</b>：先看 8–15 行的 type-only import（决定 <code class="inline">SlotMap</code> 里有哪些名字），再看 63–76 行的两个 <code class="inline">ctx.slots.inject</code> —— <code class="inline">PANEL_ID</code> 同时是 <code class="inline">sidebar.panellist</code> 的 <code class="inline">id</code> 与 <code class="inline">main</code> 的 <code class="inline">key</code>，这是「点图标能打开面板」的唯一原因。样式全部走内联与 <code class="inline">--dsw-alias-*</code> 变量。</p>
+
+
+
+
+<figure class="shot">
+  <div class="frame h-620"><img src="images/starter-panel.jpg" alt="starter 插件运行效果：侧栏出现「示例」入口，主区域显示第一个插槽面板"></div>
+  <figcaption>图 8 · starter 运行效果：官方左栏里多出「示例」一行（图标来自插件），点开后 <code>main</code> 插槽渲染插件自己的面板——其余界面保持官方原样。</figcaption>
+</figure>
+
+<h3 id="expert">示例二：expert-team —— 输入框浮层 + 跨面板跳转</h3>
+<ol class="timeline">
+  <li><b>选插槽</b>：输入框左下角 → <code>conversation.input.left</code>（list · session）。</li>
+  <li><b>写触发按钮 + 浮层</b>：自己管理开关、外部点击与 <code>Escape</code>；浮层绝对定位在按钮上方。</li>
+  <li><b>注入跳转能力</b>：用 <code>inject</code> 面把 <code>ctx.layout</code> 包成 <code>summon()</code>，并在跳转前检查目标面板是否存在。</li>
+</ol>
+<figure class="code">
+  <figcaption><span class="path">packages/plugins/expert-team/src/index.ts</span>（Host 面，19 行）</figcaption>
+<pre><code>/**
+ * Host face of a UI-only plugin.
+ *
+ * The UI lives entirely in `client.tsx`. This entry exists because the official
+ * client-modules service discovers browser bundles by scanning *host loader
+ * entries* for `dsh.client` declarations — no loader row means no client module,
+ * even if the package ships one.
+ */
+import type { Context } from '@deepseek-ai/cordis'
+
+export const name = 'dsh-expert-team-plugin'
+export const inject = [] as const
+
+export function apply(ctx: Context): void {
+  ctx.effect(() =&gt; {
+    ctx.logger('dsh-expert-team-plugin').debug('expert team UI mounted from dsh-expert-team-plugin/client')
+    return () =&gt; {}
+  }, 'dsh-expert-team-plugin.lifecycle')
+}</code></pre>
+</figure>
+
+<p>这个文件里没有一行 UI，但<b>必须有</b>：<code class="inline">dsh-client-modules</code> 是扫 Host 的 loader entry 找 <code class="inline">dsh.client</code> 字段的。所以「纯前端插件」也一定是「Host 面 + 浏览器面」两个入口，缺一个就只剩包在磁盘上、模块不进 boot 清单。</p>
+
+<figure class="code">
+  <figcaption><span class="path">packages/plugins/expert-team/src/client.tsx</span>（核心 30 行）</figcaption>
+<pre><code>const SLOT_ID = 'dsh-expert-team'
+const STARTER_PANEL = 'starter-hello'      <span class="c">// === starter 的 main key</span>
+
+ctx.slots.inject('conversation.input.left', () =&gt;
+  ctx.slots.register(
+    {
+      name: 'conversation.input.left',
+      id: SLOT_ID,
+      order: 40,
+      inject: () =&gt; ({
+        summon: (expert: Expert): boolean =&gt; {
+          <span class="c">// 目标插件可能没启用：先确认 main 里有这个 key</span>
+          const available = ctx.slots.entriesOfSlot('main')
+            .some(entry =&gt; entry.options.key === STARTER_PANEL)
+          if (!available) return false
+          ctx.layout.selectPanel(STARTER_PANEL as MainPanelId)
+          window.dispatchEvent(new CustomEvent('dsh-starter:expert-summoned', { detail: expert }))
+          return true
+        },
+      }),
+    },
+    ExpertTeamTrigger,
+  ))</code></pre>
+</figure>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="kicker">浮层的要点</div>
+    <h4>自己管理，不依赖壳</h4>
+    <p>插槽只给你「控件的位置」。开关状态、外部点击、键盘关闭、<code class="inline">aria-expanded</code> 都是组件自己的责任；面板用固定定位并按触发器位置夹在视口内，窄窗口也不会被切掉。</p>
+  </div>
+  <div class="card">
+    <div class="kicker">跨插槽跳转</div>
+    <h4>用 layout 服务，不要伪造导航</h4>
+    <p><code class="inline">ctx.layout.selectPanel(key)</code> 是唯一正当的换页方式；它同时更新侧栏高亮与 <code>main</code> 的键控渲染。</p>
+  </div>
+</div>
+
+<figure class="code full">
+  <figcaption><span class="path">packages/plugins/expert-team/src/client.tsx</span><span class="lines">225 行</span><span class="hint">完整文件 · 带行号 · 块内滚动</span></figcaption>
+<pre class="numbered" style="max-height:720px"><code><span class="line"><span class="c">/**</span></span><span class="line"><span class="c"> * Expert team picker, contributed to the left side of the composer tool row.</span></span><span class="line"><span class="c"> *</span></span><span class="line"><span class="c"> * Everything is mocked in the browser: no Host round-trip, no Session mutation.</span></span><span class="line"><span class="c"> * The only real integration is the slot contract — `conversation.input.left`</span></span><span class="line"><span class="c"> * for the trigger and the `main` keyed slot for the jump target.</span></span><span class="line"><span class="c"> */</span></span><span class="line">import * as React from 'react'</span><span class="line">import type { Context } from '@deepseek-ai/cordis'</span><span class="line">import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'</span><span class="line">import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'</span><span class="line">import type {} from '@deepseek-ai/dsh-client-ui-slots'</span><span class="line"><span class="c">// Type-only: merges `conversation.input.left` into SlotMap.</span></span><span class="line">import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'</span><span class="line"></span><span class="line">export const name = 'dsh-expert-team-client'</span><span class="line">export const inject = ['slots', 'layout'] as const</span><span class="line"></span><span class="line"><span class="c">/** List id of this trigger inside `conversation.input.left`. */</span></span><span class="line">const SLOT_ID = 'dsh-expert-team'</span><span class="line"><span class="c">/** Target panel contributed by packages/plugins/starter (sidebar id === main key). */</span></span><span class="line">const STARTER_PANEL = 'starter-hello'</span><span class="line"></span><span class="line">interface Expert {</span><span class="line">  readonly id: string</span><span class="line">  readonly name: string</span><span class="line">  readonly role: string</span><span class="line">  readonly summary: string</span><span class="line">  readonly avatar: string</span><span class="line">  readonly accent: string</span><span class="line">}</span><span class="line"></span><span class="line">const experts: readonly Expert[] = [</span><span class="line">  {</span><span class="line">    id: 'analyst',</span><span class="line">    name: '林澈',</span><span class="line">    role: '数据分析师',</span><span class="line">    summary: '拆解指标、写 SQL、把结论画成图。',</span><span class="line">    avatar: '林',</span><span class="line">    accent: 'linear-gradient(145deg,#2f6df6,#5aa9ff)',</span><span class="line">  },</span><span class="line">  {</span><span class="line">    id: 'designer',</span><span class="line">    name: '沈知',</span><span class="line">    role: '产品设计师',</span><span class="line">    summary: '梳理信息架构与交互流程，产出可评审方案。',</span><span class="line">    avatar: '沈',</span><span class="line">    accent: 'linear-gradient(145deg,#c2410c,#f59e0b)',</span><span class="line">  },</span><span class="line">  {</span><span class="line">    id: 'architect',</span><span class="line">    name: '周行',</span><span class="line">    role: '技术架构师',</span><span class="line">    summary: '评估技术选型、拆分模块、指出长期成本。',</span><span class="line">    avatar: '周',</span><span class="line">    accent: 'linear-gradient(145deg,#0f766e,#14b8a6)',</span><span class="line">  },</span><span class="line">]</span><span class="line"></span><span class="line">const css = `</span><span class="line">.dsh-expert-team{position:relative;display:flex;align-items:center}</span><span class="line">.dsh-expert-team__trigger{display:flex;align-items:center;gap:7px;height:36px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--dsw-alias-label-secondary);font:500 13px/1 var(--dsw-font-family,sans-serif);cursor:pointer}</span><span class="line">.dsh-expert-team__trigger:hover,.dsh-expert-team__trigger[aria-expanded="true"]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}</span><span class="line">.dsh-expert-team__trigger svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}</span><span class="line">.dsh-expert-team__popover{position:fixed;z-index:90;box-sizing:border-box;width:336px;max-width:calc(100vw - 24px);padding:10px;border-radius:15px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-panel);font:14px/20px var(--dsw-font-family,sans-serif)}</span><span class="line">.dsh-expert-team__popover *{box-sizing:border-box}</span><span class="line">.dsh-expert-team__head{padding:6px 8px 10px}</span><span class="line">.dsh-expert-team__head strong{display:block;font-size:14px;font-weight:600}</span><span class="line">.dsh-expert-team__head small{display:block;margin-top:2px;font-size:11px;color:var(--dsw-alias-label-secondary)}</span><span class="line">.dsh-expert-team__row{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px;border-radius:10px}</span><span class="line">.dsh-expert-team__row:hover{background:var(--dsw-alias-interactive-bg-hover)}</span><span class="line">.dsh-expert-team__avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;color:#fff;font-weight:600}</span><span class="line">.dsh-expert-team__copy{min-width:0}</span><span class="line">.dsh-expert-team__copy strong,.dsh-expert-team__copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</span><span class="line">.dsh-expert-team__copy strong{font-size:13.5px;font-weight:600}</span><span class="line">.dsh-expert-team__copy small{margin-top:2px;font-size:11.5px;color:var(--dsw-alias-label-secondary)}</span><span class="line">.dsh-expert-team__summon{min-width:56px;padding:6px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font:500 12px/1 var(--dsw-font-family,sans-serif);cursor:pointer}</span><span class="line">.dsh-expert-team__summon:hover{border-color:var(--dsw-alias-label-primary)}</span><span class="line">.dsh-expert-team__foot{margin:6px 2px 0;padding:8px 8px 4px;border-top:.5px solid var(--dsw-alias-border-l2);font-size:11px;color:var(--dsw-alias-label-secondary)}</span><span class="line">.dsh-expert-team__error{margin:6px 8px 0;font-size:11.5px;color:var(--dsw-alias-state-danger-primary,var(--dsw-alias-label-primary))}</span><span class="line">@media (max-width:720px){.dsh-expert-team__trigger span{display:none}}</span><span class="line">`</span><span class="line"></span><span class="line">type TriggerProps = { summon: (expert: Expert) =&gt; boolean }</span><span class="line"></span><span class="line">function ExpertTeamTrigger({ summon }: TriggerProps) {</span><span class="line">  const root = React.useRef&lt;HTMLDivElement&gt;(null)</span><span class="line">  const [open, setOpen] = React.useState(false)</span><span class="line">  const [position, setPosition] = React.useState&lt;{ left: number, bottom: number }&gt;()</span><span class="line">  const [error, setError] = React.useState('')</span><span class="line"></span><span class="line">  <span class="c">// The composer sits in the middle of the window, and a 336px panel anchored</span></span><span class="line">  <span class="c">// left would run past the right edge on narrow windows (or under the sidebar</span></span><span class="line">  <span class="c">// when flipped). Measure the trigger and clamp a fixed-position panel inside</span></span><span class="line">  <span class="c">// the viewport instead; re-place on resize, which also covers sidebar</span></span><span class="line">  <span class="c">// collapse/expand moving the composer.</span></span><span class="line">  React.useLayoutEffect(() =&gt; {</span><span class="line">    if (!open) return</span><span class="line">    const place = () =&gt; {</span><span class="line">      const rect = root.current?.getBoundingClientRect()</span><span class="line">      if (!rect) return</span><span class="line">      const width = Math.min(356, window.innerWidth - 24)</span><span class="line">      setPosition({</span><span class="line">        left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),</span><span class="line">        bottom: window.innerHeight - rect.top + 10,</span><span class="line">      })</span><span class="line">    }</span><span class="line">    place()</span><span class="line">    window.addEventListener('resize', place)</span><span class="line">    return () =&gt; window.removeEventListener('resize', place)</span><span class="line">  }, [open])</span><span class="line"></span><span class="line">  React.useEffect(() =&gt; {</span><span class="line">    if (!open) return</span><span class="line">    const onPointerDown = (event: PointerEvent) =&gt; {</span><span class="line">      if (!root.current?.contains(event.target as Node)) setOpen(false)</span><span class="line">    }</span><span class="line">    const onKeyDown = (event: KeyboardEvent) =&gt; {</span><span class="line">      if (event.key !== 'Escape') return</span><span class="line">      setOpen(false)</span><span class="line">      root.current?.querySelector&lt;HTMLButtonElement&gt;('.dsh-expert-team__trigger')?.focus()</span><span class="line">    }</span><span class="line">    document.addEventListener('pointerdown', onPointerDown)</span><span class="line">    document.addEventListener('keydown', onKeyDown)</span><span class="line">    return () =&gt; {</span><span class="line">      document.removeEventListener('pointerdown', onPointerDown)</span><span class="line">      document.removeEventListener('keydown', onKeyDown)</span><span class="line">    }</span><span class="line">  }, [open])</span><span class="line"></span><span class="line">  const pick = (expert: Expert) =&gt; {</span><span class="line">    setError('')</span><span class="line">    if (summon(expert)) {</span><span class="line">      setOpen(false)</span><span class="line">      return</span><span class="line">    }</span><span class="line">    setError('目标面板不可用：请确认 starter 插件已启用。')</span><span class="line">  }</span><span class="line"></span><span class="line">  return (</span><span class="line">    &lt;div className="dsh-expert-team" ref={root}&gt;</span><span class="line">      &lt;style&gt;{css}&lt;/style&gt;</span><span class="line">      &lt;button</span><span class="line">        type="button"</span><span class="line">        className="dsh-expert-team__trigger"</span><span class="line">        aria-label="召唤专家"</span><span class="line">        aria-haspopup="dialog"</span><span class="line">        aria-expanded={open}</span><span class="line">        onClick={() =&gt; setOpen(value =&gt; !value)}</span><span class="line">      &gt;</span><span class="line">        &lt;svg viewBox="0 0 24 24" aria-hidden="true"&gt;</span><span class="line">          &lt;circle cx="9" cy="8" r="3.2" /&gt;</span><span class="line">          &lt;path d="M3.5 19c.6-3 2.9-4.6 5.5-4.6s4.9 1.6 5.5 4.6" /&gt;</span><span class="line">          &lt;circle cx="17.5" cy="9.5" r="2.4" /&gt;</span><span class="line">          &lt;path d="M15.4 14.6c2.6-.4 4.7 1.1 5.1 4.4" /&gt;</span><span class="line">        &lt;/svg&gt;</span><span class="line">        &lt;span&gt;专家团&lt;/span&gt;</span><span class="line">      &lt;/button&gt;</span><span class="line"></span><span class="line">      {open ? (</span><span class="line">        &lt;div</span><span class="line">          className="dsh-expert-team__popover"</span><span class="line">          style={position ? { left: position.left, bottom: position.bottom } : { visibility: 'hidden' }}</span><span class="line">          role="dialog"</span><span class="line">          aria-label="召唤专家"</span><span class="line">        &gt;</span><span class="line">          &lt;div className="dsh-expert-team__head"&gt;</span><span class="line">            &lt;strong&gt;召唤专家&lt;/strong&gt;</span><span class="line">            &lt;small&gt;选一位专家团成员，带着你的草稿进入协作&lt;/small&gt;</span><span class="line">          &lt;/div&gt;</span><span class="line"></span><span class="line">          {experts.map(expert =&gt; (</span><span class="line">            &lt;div className="dsh-expert-team__row" key={expert.id}&gt;</span><span class="line">              &lt;span className="dsh-expert-team__avatar" style={{ background: expert.accent }} aria-hidden="true"&gt;</span><span class="line">                {expert.avatar}</span><span class="line">              &lt;/span&gt;</span><span class="line">              &lt;span className="dsh-expert-team__copy"&gt;</span><span class="line">                &lt;strong&gt;{expert.name} · {expert.role}&lt;/strong&gt;</span><span class="line">                &lt;small&gt;{expert.summary}&lt;/small&gt;</span><span class="line">              &lt;/span&gt;</span><span class="line">              &lt;button</span><span class="line">                type="button"</span><span class="line">                className="dsh-expert-team__summon"</span><span class="line">                aria-label={`召唤 ${expert.role} ${expert.name}`}</span><span class="line">                onClick={() =&gt; pick(expert)}</span><span class="line">              &gt;</span><span class="line">                召唤</span><span class="line">              &lt;/button&gt;</span><span class="line">            &lt;/div&gt;</span><span class="line">          ))}</span><span class="line"></span><span class="line">          &lt;p className="dsh-expert-team__foot"&gt;示例数据：三位专家为本地 mock，召唤后跳转到 Starter 面板。&lt;/p&gt;</span><span class="line">          {error ? &lt;p className="dsh-expert-team__foot dsh-expert-team__error" role="alert"&gt;{error}&lt;/p&gt; : null}</span><span class="line">        &lt;/div&gt;</span><span class="line">      ) : null}</span><span class="line">    &lt;/div&gt;</span><span class="line">  )</span><span class="line">}</span><span class="line"></span><span class="line">export function apply(ctx: Context): void {</span><span class="line">  ctx.slots.inject('conversation.input.left', () =&gt;</span><span class="line">    ctx.slots.register(</span><span class="line">      {</span><span class="line">        name: 'conversation.input.left',</span><span class="line">        id: SLOT_ID,</span><span class="line">        order: 40,</span><span class="line">        inject: () =&gt; ({</span><span class="line">          summon: (expert: Expert): boolean =&gt; {</span><span class="line">            <span class="c">// The sidebar row and the main panel share one string; verify the</span></span><span class="line">            <span class="c">// target exists so a disabled starter plugin cannot strand the user</span></span><span class="line">            <span class="c">// on an empty panel.</span></span><span class="line">            const available = ctx.slots</span><span class="line">              .entriesOfSlot('main')</span><span class="line">              .some(entry =&gt; entry.options.key === STARTER_PANEL)</span><span class="line">            if (!available) return false</span><span class="line">            ctx.layout.selectPanel(STARTER_PANEL as MainPanelId)</span><span class="line">            window.dispatchEvent(new CustomEvent('dsh-starter:expert-summoned', { detail: expert }))</span><span class="line">            return true</span><span class="line">          },</span><span class="line">        }),</span><span class="line">      },</span><span class="line">      ExpertTeamTrigger,</span><span class="line">    ),</span><span class="line">  )</span><span class="line">}</span></code></pre>
+</figure>
+<p class="src-note"><b>阅读顺序</b>：60–82 行是组件全部 CSS（用官方变量，跟随主题）；86–198 行是触发器与浮层，含按触发器位置夹在视口内的定位（97–111）、外部点击与 <code class="inline">Escape</code>（113–129）；200–225 行才是插槽注册，<code class="inline">inject</code> 面把 <code class="inline">ctx.layout</code> 包成 <code class="inline">summon()</code>，并在换页前确认目标 <code class="inline">main</code> key 存在。</p>
+
+
+
+
+<figure class="shot">
+  <div class="frame h-820"><img src="images/expert-team-popover.jpg" alt="expert-team 插件运行效果：输入框左侧「专家团」按钮与召唤浮层，浮层内三位 mock 专家各带召唤按钮"></div>
+  <figcaption>图 9 · expert-team 运行效果：输入框左下角多出「专家团」（<code>conversation.input.left</code>），点击弹出浮层，三位 mock 专家各带「召唤」；点击后跳转到图 8 的 Starter 面板。</figcaption>
+</figure>
+
+<h3 id="devloop">本地开发循环</h3>
+<div class="flow">
+  <div class="step"><div class="n">1</div><b>构建</b><span>pnpm build</span><div style="font-size:12px;color:var(--muted);margin-top:6px">esbuild 出 Host ESM + 客户端 CJS；tsc 出 d.ts</div></div>
+  <div class="arrow">→</div>
+  <div class="step"><div class="n">2</div><b>打包</b><span>pnpm pack</span><div style="font-size:12px;color:var(--muted);margin-top:6px">按内容哈希落到 <code class="inline">.artifacts/&lt;sha16&gt;/</code></div></div>
+  <div class="arrow">→</div>
+  <div class="step"><div class="n">3</div><b>注册</b><span>dsh plugin add -w</span><div style="font-size:12px;color:var(--muted);margin-top:6px">只对变更过的插件执行，先清旧解包目录</div></div>
+  <div class="arrow">→</div>
+  <div class="step"><div class="n">4</div><b>启动</b><span>dsh web</span><div style="font-size:12px;color:var(--muted);margin-top:6px">打印带 token 的地址</div></div>
+</div>
+
+<figure class="code">
+  <figcaption>日常只用三条命令</figcaption>
+<pre><code>pnpm install          <span class="c"># 首次：Corepack 固定的 pnpm 10.34.5</span>
+pnpm dev              <span class="c"># 构建 + 注册 + 启动（幂等，第二次很快）</span>
+pnpm smoke            <span class="c"># 无头验收：不用打开浏览器</span></code></pre>
+</figure>
+
+<div class="note">
+  <span class="label">Profile 从哪来</span>
+  首次 <code class="inline">pnpm dev</code> 会调用官方 CLI 的 <code class="inline">--from-default-profile web</code>，在 <code class="inline">.dsh-home/profiles/starter</code> 生成一份<b>官方默认 Web 配置</b>，再把你的插件以 <code class="inline">file:</code> 依赖装进去。官方包一行没改，删掉 <code class="inline">.dsh-home</code> 就能完全重来。
+</div>
+
+<h4>为什么改完代码必须重启</h4>
+<p>客户端模块没有 HMR：官方 client-modules 在 boot 时按清单装载模块。所以流程是「重建 → 重新打包 → 重启服务 → 刷新页面」。内容哈希保证了<b>同名同版本也能装到新内容</b>，这是本地迭代最容易踩的坑。</p>
+
+<h3 id="debug">调试手册</h3>
+<h4>1. 先确认模块有没有被装载</h4>
+<figure class="code">
+  <figcaption>抓 token URL 后带 cookie 请求首页，看 boot 清单里有没有你的模块</figcaption>
+<pre><code>URL=$(grep -o 'http://127.0.0.1:18990/?token=[^ ]*' dev.log | tail -1)
+curl -sL -c /tmp/jar "$URL" -o /tmp/page.html
+grep -o 'dsh-expert-team-plugin/client.js' /tmp/page.html | head -1</code></pre>
+</figure>
+<p>没有出现，说明问题在 <b>Host 侧</b>：包没装进 Profile、<code>cordis.patch.yml</code> 没写、或者 <code>dsh.client</code> 字段缺失。注意官方是<b>扫描 loader entries</b> 找 <code>dsh.client</code> 的——纯 UI 插件也要有 Host 入口与 patch 行。</p>
+
+<h4>2. 打开浏览器 DevTools 看运行期</h4>
+<ul>
+  <li><b>Console</b>：<code class="inline">window.__ModuleLoader__</code> 未定义 → 打包外壳写错了（必须是 <code class="inline">load({ id, factory })</code>）；<code class="inline">Cannot read properties of undefined (reading 'slots')</code> → <code class="inline">export const inject</code> 少写了 <code class="inline">'slots'</code>。</li>
+  <li><b>Elements</b>：找不到你的节点 → 注册没生效（插槽名拼错、注册到了未声明的插槽，会在加载期抛错）。</li>
+  <li><b>Network</b>：<code class="inline">plugins/??…</code> 那条组合请求里应当包含你的 <code class="inline">/client.js</code>。</li>
+</ul>
+
+<h4>3. 运行时探查插槽</h4>
+<p>官方插槽服务提供了只读查询，可以在 Console 里确认「谁注册了什么」：</p>
+<figure class="code">
+  <figcaption>在页面 Console 里执行（通过任意能拿到 ctx 的调试入口，或给插件临时挂一个 window 探针）</figcaption>
+<pre><code><span class="c">// 插件里临时加：</span>
+window.__debug = { slots: ctx.slots, layout: ctx.layout }
+<span class="c">// Console：</span>
+__debug.slots.entriesOfSlot('conversation.input.left').map(e =&gt; e.options)
+__debug.layout.panelInfo.getSnapshot()</code></pre>
+</figure>
+
+<h4>4. 常见错误对照</h4>
+<div class="tablewrap">
+<table>
+<thead><tr><th>现象</th><th>原因</th><th>处理</th></tr></thead>
+<tbody>
+<tr><td>编译报 <code>not assignable to parameter of type '"root"'</code></td><td>没 type-only import 官方插槽声明包</td><td>加 <code>import type {} from '@deepseek-ai/dsh-client-ui-*/client'</code></td></tr>
+<tr><td>页面白屏，Console 报模块缺失</td><td>客户端模块没进 boot 清单</td><td>检查 <code>dsh.client</code>、patch 行、Profile 依赖</td></tr>
+<tr><td>图标在，点开是空白</td><td><code>sidebar.panellist.id</code> ≠ <code>main.key</code></td><td>用同一个常量</td></tr>
+<tr><td>加载期抛 <code>same priority</code></td><td>同 id 同优先级重复注册</td><td>显式给不同 <code>priority</code> 并注明原因</td></tr>
+<tr><td>改了代码但界面没变</td><td>旧 tgz 被缓存/未重新注册</td><td>看日志有没有 <code>registering …</code>；必要时 <code>pnpm clean</code></td></tr>
+<tr><td>两个 React / hooks 报错</td><td>客户端打包把 react 内联了</td><td>保持 <code>external: ['react','react-dom','@deepseek-ai/*']</code></td></tr>
+<tr><td>输入区控件挡住输入框</td><td>浮层用了固定定位或过高 z-index</td><td>相对定位 + <code>bottom: calc(100% + 10px)</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>5. 卸载验证（最硬的一条）</h3>
+<p>把插件从 <code class="inline">packages/plugins</code> 移走、<code class="inline">pnpm dev</code> 重启后，界面必须回到与官方安装包一致的状态：没有残影、没有空面板、没有多余按钮。</p>
+
+<h3 id="accept">验收与 Checklist</h3>
+<figure class="code">
+  <figcaption><span class="path">scripts/smoke.mjs</span> 断言两件事</figcaption>
+<pre><code><span class="c">// 1) 所有声明了 dsh.client 的插件，模块都出现在官方 boot 清单里</span>
+clientModules.filter(id =&gt; !html.includes(id))
+<span class="c">// 2) Host-only 插件确实被应用（stdout 标记）</span>
+buffer.includes('[dsh-host-only-plugin] applied')</code></pre>
+</figure>
+
+<ol class="timeline">
+  <li><b>选插槽</b>：先查第二部分清单，能复用就不新建；自建插槽用 <code class="inline">yourco.</code> 这类自有前缀，并只在自己的容器里渲染。</li>
+  <li><b>建包</b>：双面 exports + <code class="inline">dsh.bundle.patch</code> + <code class="inline">dsh.client</code>，目录放 <code class="inline">packages/plugins/&lt;name&gt;/</code>。</li>
+  <li><b>写注册</b>：<code class="inline">inject: ['slots', …]</code>；list 给 <code class="inline">id/order</code>，keyed 给 <code class="inline">key</code>；成对注册、返回 disposer。</li>
+  <li><b>写样式</b>：组件内 <code class="inline">&lt;style&gt;</code> + <code class="inline">--dsw-alias-*</code> 变量，不写全局选择器、不覆盖官方 DOM。</li>
+  <li><b>本地验证</b>：<code class="inline">pnpm dev</code> 手动点一遍；<code class="inline">pnpm smoke</code> 过自动化；DevTools 看 Console/Network。</li>
+  <li><b>卸载验证</b>：移除插件后界面回到官方原样。</li>
+</ol>
+
+<div class="good">
+  <span class="label">一句话收尾</span>
+  <b>插槽让「定制」变成「组合」：</b>你交付的是一个遵守契约的插件包，而不是一份需要持续维护的官方代码补丁——这正是它能跟着官方版本一起升级的原因。
+</div>
+</section>
+
+<footer>
+  基于 DeepSeek Harness <code>0.2.1-rc.5</code> 的实测整理。插槽清单由脚本扫描已安装官方包的 <code>SlotMap</code> 声明生成，示例代码取自 <code>dsh-starter</code> 仓库真实文件。
+</footer>
+</main>
+</div>
+<script>
+(function(){
+  const links=[...document.querySelectorAll('nav.toc a')];
+  const sections=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  if(!('IntersectionObserver' in window)||!sections.length)return;
+  const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+  const io=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(!e.isIntersecting)return;links.forEach(l=>l.classList.remove('active'));map.get(e.target.id)?.classList.add('active')});
+  },{rootMargin:'-10% 0px -75% 0px',threshold:0});
+  sections.forEach(s=>io.observe(s));
+})();
+</script>
+</body>
+</html>
