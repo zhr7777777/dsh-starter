@@ -65,6 +65,7 @@ pnpm desktop
 | `packages/plugins/starter/` | 示例 A：**Host + Client 双面**，侧栏图标 + 主面板（`starter-hello`） |
 | `packages/plugins/expert-team/` | 示例 B：**输入框左侧「专家团」**，点击弹浮层，召唤后跳转 Starter 面板 |
 | `packages/plugins/host-only/` | 示例 C：**仅 Host**，提供服务与生命周期，没有任何 UI |
+| `packages/plugins/usage-stats/` | 示例 D：**设置页「用量统计」**，排在「通用设置」上方，读取 `dsh-context` 的 overview 接口 |
 | `scripts/build-plugin.mjs` | 构建全部插件（或指定目录）：按源文件自动决定 Host / Client 面 |
 | `scripts/typecheck.mjs` | 逐个插件 `tsc --noEmit` |
 | `scripts/dev.mjs` | 脚手架 Profile → 打包并注册全部插件 → 启动 `dsh web` |
@@ -137,6 +138,34 @@ ctx.slots.register({ name: 'main', key: PANEL_ID }, StarterPanel) // 键控槽�
 ```bash
 grep -r "interface SlotMap" node_modules/.dsh-home/profiles/starter/node_modules/@deepseek-ai/*/lib/types -l
 ```
+
+## 用量统计页（依赖 dsh-context）
+
+`packages/plugins/usage-stats/` 往官方设置面板的 `settings.section` 里注册一个分区：
+
+```tsx
+ctx.slots.inject('settings.section', () => ctx.slots.register(
+  { name: 'settings.section', id: 'usage-stats', order: -5, label: '用量统计' },
+  UsagePage,
+))
+```
+
+官方分区顺序是 Account `-10`、General `0`、Models `10`、Plugins `15`，所以 `-5` 正好落在「通用设置」上面。
+
+页面本身不折叠会话日志，只 POST `dsh-context` 的只读路由 `api/dsh-context/overview`（`summary` / `days` / `tally` / `page` 四段），复用它的投影缓存与冷会话补齐：
+
+- 时间范围：今天 / 近 7 天 / 近 30 天；
+- 指标：计费 Token、预估成本、轮次、缓存命中率；
+- 图表：按日 Token 柱状图、Token 构成（系统/工具/用户/推理/回答等）、工具调用榜、会话榜；
+- 每 30 秒自动刷新，页面不可见时跳过。
+
+`dsh-context` 是 npm 上的外部插件（`dsh-context@^0.85.1`），根 `package.json` 只是一个版本锚点；真正的安装发生在 `scripts/dev.mjs`：Profile 是独立的 pnpm 项目，脚本会检查并执行 `dsh plugin --profile starter add -w dsh-context@^0.85.1`，同时把它加进 `dsh.profile.bundles`。
+
+因此：
+
+- **Web / 开发模式**：`pnpm dev` 会自动装好 dsh-context，页面有数据；
+- **桌面打包**：`build-runtime.mjs` 只复制 `packages/plugins/*`，不带外部 npm 插件，页面会显示「暂时拿不到用量数据」；要让它进安装包，需要把 dsh-context（及其依赖）一起放进 runtime Profile；
+- 没有 dsh-context 或还没跑过真实对话时，页面会显式降级，而不是报错。
 
 ## 桌面外壳（Electron）
 

@@ -103,11 +103,46 @@ if (pending.length) {
   // -w: a scaffolded Profile is a single-package pnpm workspace, so pnpm needs
   // the explicit workspace-root flag. `dsh plugin` forwards arguments verbatim.
   run(['plugin', '--profile', profileName, 'add', '-w', ...pending.map(({ archive }) => archive)])
+  // pnpm keys a resolved `file:` tarball by name+version, not by path, so a
+  // rebuilt plugin updates the lockfile specifier while keeping the old
+  // resolved archive — the Profile then keeps serving the previous build.
+  // Dropping the Profile lockfile and reinstalling re-resolves every `file:`
+  // dependency from package.json, i.e. to the freshly packed content.
+  // Use the same `pnpm` that `dsh plugin` uses (PATH), not `corepack pnpm`:
+  // mixing major versions flips the Profile's store and breaks later adds.
+  console.log('relinking Profile to the rebuilt plugin archives')
+  rmSync(join(profileDir, 'pnpm-lock.yaml'), { force: true })
+  execFileSync('pnpm', ['install', '--force'], {
+    cwd: profileDir,
+    env,
+    stdio: 'inherit',
+    timeout: 1_800_000,
+  })
 } else {
   console.log(`all ${layout.length} plugin(s) already registered with the current build`)
 }
 
-// 4) serve
+// 4) external plugin the UI builds on: dsh-context owns the session projection
+//    cache and the overview route behind the usage-stats settings page. The
+//    Profile is its own pnpm project, so a root dependency is not enough — the
+//    package has to be added to the Profile and to its bundle list.
+const externalPlugins = ['dsh-context']
+const currentProfile = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+const externalPending = externalPlugins.filter(name => currentProfile.dependencies?.[name] === undefined)
+
+if (externalPending.length) {
+  const rootManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+  const specs = externalPending.map(name => {
+    const spec = rootManifest.dependencies?.[name]
+    return typeof spec === 'string' ? `${name}@${spec}` : name
+  })
+  console.log(`registering external plugin(s): ${specs.join(', ')}`)
+  run(['plugin', '--profile', profileName, 'add', '-w', ...specs])
+} else {
+  console.log(`external plugin(s) already registered: ${externalPlugins.join(', ')}`)
+}
+
+// 5) serve
 console.log(`Starting dsh web on http://${host}:${port} (DSH_HOME=${home})`)
 const child = spawn(
   node,

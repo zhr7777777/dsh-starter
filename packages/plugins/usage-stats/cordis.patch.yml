@@ -1,0 +1,6 @@
+# Composed into the Profile patch by the official plugin manager.
+# The Host face only exists so the client-modules service can discover the
+# `dsh.client` declaration and mount the settings page in the browser.
+- insert:
+    - id: dsh-usage-stats-plugin
+      name: dsh-usage-stats-plugin

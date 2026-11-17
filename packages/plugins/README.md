@@ -19,19 +19,26 @@ packages/plugins/
 │   └── src/
 │       ├── index.ts   ← 只为了让包成为 loader entry（见下文）
 │       └── client.tsx ← conversation.input.left + 浮层 + layout.selectPanel
-└── host-only/         ← 示例 C：只有 Host 面，没有任何 UI
-    ├── package.json   ← 只有 "." exports 和 dsh.bundle.patch，没有 dsh.client
+├── host-only/         ← 示例 C：只有 Host 面，没有任何 UI
+│   ├── package.json   ← 只有 "." exports 和 dsh.bundle.patch，没有 dsh.client
+│   ├── cordis.patch.yml
+│   ├── tsconfig.json
+│   └── src/
+│       └── index.ts   ← 提供服务 + 生命周期，无浏览器入口
+└── usage-stats/       ← 示例 D：设置页「用量统计」，数据来自 dsh-context
+    ├── package.json
     ├── cordis.patch.yml
     ├── tsconfig.json
     └── src/
-        └── index.ts   ← 提供服务 + 生命周期，无浏览器入口
+        ├── index.ts   ← 最小 Host 面，只为让 client 模块被发现
+        └── client.tsx ← settings.section + overview 取数/渲染
 ```
 
 ## 两种插件形态
 
 | 形态 | 需要哪些源文件 | `exports` | `dsh` 字段 | 典型用途 |
 |---|---|---|---|---|
-| **Host + Client** | `src/index.ts` + `src/client.tsx` | `.` + `./client` | `bundle.patch` + `client` | 有界面的业务功能（`starter/`、`expert-team/`） |
+| **Host + Client** | `src/index.ts` + `src/client.tsx` | `.` + `./client` | `bundle.patch` + `client` | 有界面的业务功能（`starter/`、`expert-team/`、`usage-stats/`） |
 | **仅 Host** | `src/index.ts` | 只有 `.` | 只有 `bundle.patch` | 服务、工具、存储、会话中间件（`host-only/`） |
 
 **没有「仅 Client」这种形态。** 官方 client-modules 是**扫描 Host loader entries** 来找 `dsh.client` 声明的——没有 loader 行（也就没有 Host 入口）就没有浏览器模块。所以哪怕是纯 UI 插件，也保留一个最小 `src/index.ts` + `cordis.patch.yml`（`expert-team/` 就是这么做的）。
@@ -143,6 +150,30 @@ ctx.slots.inject('conversation.input.left', () => ctx.slots.register(
 ```
 
 三位专家是页面内的 mock 数据（`experts` 常量），没有 Host 往返，也没有改动会话。
+
+## 示例 D：用量统计（设置页 + 外部插件）
+
+`usage-stats/` 演示两件事：
+
+1. **往官方设置面板加分页**：注册 `settings.section`，`id: 'usage-stats'`、`order: -5`。官方 Account 是 `-10`、General 是 `0`，所以它排在「通用设置」正上方；
+2. **消费另一个插件的只读 HTTP 契约**：页面只 POST `api/dsh-context/overview`，按 `summary` / `days` / `tally` / `page` 四段取数，不 import `dsh-context` 的内部模块，也不自己重折会话日志。
+
+```tsx
+ctx.slots.inject('settings.section', () => ctx.slots.register(
+  { name: 'settings.section', id: 'usage-stats', order: -5, label: '用量统计' },
+  UsagePage,
+))
+```
+
+`dsh-context` 是 npm 外部包（`dsh-context@^0.85.1`）。Profile 是独立 pnpm 项目，所以根 `package.json` 里的依赖不会自动进 Profile；`scripts/dev.mjs` 会检查 Profile 并在缺失时执行：
+
+```bash
+dsh plugin --profile starter add -w dsh-context@^0.85.1
+```
+
+同时把它写进 `dsh.profile.bundles`。桌面打包（`build-runtime.mjs`）目前只复制本仓库的 `packages/plugins/*`，不带这个外部插件，所以桌面版该页会降级为「暂时拿不到用量数据」——这是有意的显式降级，不是崩溃。
+
+数据为空时页面会区分两种状态：接口不可用（提示检查 dsh-context）和时间范围内没有会话（提示先跑一轮对话）。
 
 ## 构建与运行
 
