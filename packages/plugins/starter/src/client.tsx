@@ -2,40 +2,23 @@
  * Browser entry: assembled by the official client module loader.
  *
  * Only public slot APIs are used here. The shell owns layout, the sidebar
- * button, accessibility and selection state; this file contributes a glyph and
- * one panel body.
+ * structure, accessibility and selection state; this file contributes one
+ * programmatic panel body and the composer's computer-target picker.
  */
 import * as React from 'react'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
-// Type-only: merges `sidebar.panellist` into SlotMap.
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 // Type-only: merges `main` into SlotMap.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+// Type-only: merges `conversation.input.left` into SlotMap.
+import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 
 export const name = 'dsh-starter-client'
 export const inject = ['slots'] as const
 
-/** Sidebar list id === main keyed slot key, so the row actually opens this panel. */
+/** Main keyed slot key. The starter panel is opened programmatically (expert team). */
 const PANEL_ID = 'starter-hello'
-
-function StarterIcon({ size }: { size: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3l2.3 5.7L20 11l-5.7 2.3L12 19l-2.3-5.7L4 11l5.7-2.3z" />
-    </svg>
-  )
-}
 
 function StarterPanel() {
   return (
@@ -60,17 +43,199 @@ function StarterPanel() {
   )
 }
 
-export function apply(ctx: Context): void {
-  // List slot: id is dedupe key + order position + accessibility label.
-  ctx.slots.inject('sidebar.panellist', () =>
-    ctx.slots.register(
-      { name: 'sidebar.panellist', id: PANEL_ID, label: '示例', order: 15 },
-      StarterIcon,
-    ),
-  )
+const COMPUTER_SLOT_ID = 'dsh-computer-target'
+const COMPUTER_STORAGE_KEY = 'dsh-starter:computer-target'
 
-  // Keyed slot: the key must equal the sidebar row id above.
+type ComputerTarget = 'local' | 'cloud'
+
+interface ComputerOption {
+  id: ComputerTarget
+  label: string
+}
+
+const COMPUTER_OPTIONS: readonly ComputerOption[] = [
+  { id: 'local', label: '本地电脑' },
+  { id: 'cloud', label: '云电脑' },
+]
+
+const computerCss = `
+.dsh-computer{position:relative;display:inline-flex;align-items:center;min-width:0}
+.dsh-computer__trigger{border-radius:var(--dsw-radius-sm);min-width:0;max-width:160px;height:28px;color:var(--dsw-alias-label-secondary);cursor:pointer;background:0 0;border:none;outline:none;display:inline-flex;align-items:center;gap:4px;padding:0 4px 0 8px;font:500 13px/20px var(--dsw-font-family,sans-serif)}
+.dsh-computer__trigger:hover,.dsh-computer__trigger[aria-expanded="true"]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.dsh-computer__trigger:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary))}
+@container (width <= 460px){.dsh-computer__label{display:none}}
+.dsh-computer__icon{flex:none;display:inline-flex}
+.dsh-computer__icon svg{width:14px;height:14px}
+.dsh-computer__label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dsh-computer__chevron{flex:none;color:var(--dsw-alias-label-caption);display:inline-flex;transition:transform .12s}
+.dsh-computer__chevron svg{width:12px;height:12px}
+.dsh-computer__chevron--open{transform:rotate(180deg)}
+.dsh-computer__menu{position:fixed;z-index:90;box-sizing:border-box;min-width:188px;padding:6px;border-radius:12px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:var(--dsw-elevation-panel);font:13px/20px var(--dsw-font-family,sans-serif)}
+.dsh-computer__menu *{box-sizing:border-box}
+.dsh-computer__option{display:flex;align-items:center;gap:8px;width:100%;height:34px;padding:0 8px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.dsh-computer__option:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.dsh-computer__option-icon{flex:none;display:inline-flex;color:var(--dsw-alias-label-secondary)}
+.dsh-computer__option-icon svg{width:15px;height:15px}
+.dsh-computer__option-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsh-computer__check{flex:none;display:inline-flex;color:var(--dsw-alias-brand-primary)}
+.dsh-computer__check svg{width:14px;height:14px}
+`
+
+function MonitorIcon(): React.ReactElement {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="1.75" y="2.75" width="12.5" height="8.5" rx="1.5" />
+      <path d="M8 11.25V14M5.5 14h5" />
+    </svg>
+  )
+}
+
+function CloudIcon(): React.ReactElement {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4.6 12h7.1a2.6 2.6 0 0 0 .3-5.18 3.7 3.7 0 0 0-7.1-.52A2.4 2.4 0 0 0 4.6 12Z" />
+    </svg>
+  )
+}
+
+function ChevronIcon(): React.ReactElement {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 6.5 8 10l4-3.5" />
+    </svg>
+  )
+}
+
+function CheckIcon(): React.ReactElement {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m3.5 8.5 3 3 6-6.5" />
+    </svg>
+  )
+}
+
+function readComputerTarget(): ComputerTarget {
+  try {
+    return localStorage.getItem(COMPUTER_STORAGE_KEY) === 'cloud' ? 'cloud' : 'local'
+  } catch {
+    return 'local'
+  }
+}
+
+/**
+ * Composer-left computer picker. Mirrors the permission trigger's compact
+ * 28px row style: device glyph, current target, chevron and a listbox that
+ * opens above the composer. The selection is local to the browser.
+ */
+function ComputerTargetPicker(): React.ReactElement {
+  const [target, setTarget] = React.useState<ComputerTarget>(readComputerTarget)
+  const [open, setOpen] = React.useState(false)
+  const [spot, setSpot] = React.useState<{ left: number; bottom: number } | null>(null)
+  const rootRef = React.useRef<HTMLDivElement | null>(null)
+  const menuRef = React.useRef<HTMLDivElement | null>(null)
+
+  const close = (): void => { setOpen(false) }
+
+  React.useEffect(() => {
+    if (!open) return undefined
+    const onPointerDown = (event: MouseEvent): void => {
+      const node = event.target
+      if (!(node instanceof Node)) return
+      if (rootRef.current?.contains(node) === true || menuRef.current?.contains(node) === true) return
+      close()
+    }
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') close()
+    }
+    window.addEventListener('mousedown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('resize', close)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('resize', close)
+      window.removeEventListener('scroll', close, true)
+    }
+  }, [open])
+
+  React.useLayoutEffect(() => {
+    if (!open) return
+    const anchor = rootRef.current
+    const menu = menuRef.current
+    if (anchor === null || menu === null) return
+    const rect = anchor.getBoundingClientRect()
+    const width = menu.offsetWidth
+    const left = Math.max(8, Math.min(rect.left - 4, window.innerWidth - width - 8))
+    const bottom = Math.max(8, window.innerHeight - rect.top + 6)
+    setSpot(current => current !== null && current.left === left && current.bottom === bottom ? current : { left, bottom })
+  })
+
+  const choose = (next: ComputerTarget): void => {
+    setTarget(next)
+    setOpen(false)
+    try { localStorage.setItem(COMPUTER_STORAGE_KEY, next) } catch { /* storage unavailable */ }
+    window.dispatchEvent(new CustomEvent('dsh-starter:computer-target', { detail: next }))
+  }
+
+  const current = COMPUTER_OPTIONS.find(option => option.id === target) ?? COMPUTER_OPTIONS[0]!
+  return (
+    <div className="dsh-computer" ref={rootRef}>
+      <style>{computerCss}</style>
+      <button
+        type="button"
+        className="dsh-computer__trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`运行位置：${current.label}`}
+        title={`运行位置：${current.label}`}
+        onClick={() => { setOpen(value => !value) }}
+      >
+        <span className="dsh-computer__icon">{target === 'cloud' ? <CloudIcon /> : <MonitorIcon />}</span>
+        <span className="dsh-computer__label">{current.label}</span>
+        <span className={'dsh-computer__chevron' + (open ? ' dsh-computer__chevron--open' : '')}><ChevronIcon /></span>
+      </button>
+      {open ? (
+        <div
+          ref={menuRef}
+          className="dsh-computer__menu"
+          role="listbox"
+          aria-label="选择运行位置"
+          style={spot === null ? { left: 0, bottom: 0, visibility: 'hidden' } : { left: spot.left, bottom: spot.bottom }}
+        >
+          {COMPUTER_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className="dsh-computer__option"
+              role="option"
+              aria-selected={option.id === target}
+              onClick={() => { choose(option.id) }}
+            >
+              <span className="dsh-computer__option-icon">{option.id === 'cloud' ? <CloudIcon /> : <MonitorIcon />}</span>
+              <span className="dsh-computer__option-label">{option.label}</span>
+              {option.id === target ? <span className="dsh-computer__check"><CheckIcon /></span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function apply(ctx: Context): void {
+  // The starter panel no longer has a sidebar row; it stays mounted as a main
+  // keyed slot and is opened programmatically by the expert-team trigger.
   ctx.slots.inject('main', () =>
     ctx.slots.register({ name: 'main', key: PANEL_ID }, StarterPanel),
+  )
+
+  // Composer row: sits directly right of the permission selector (single slot
+  // rendered before this list) and left of the expert-team trigger (order 40).
+  ctx.slots.inject('conversation.input.left', () =>
+    ctx.slots.register(
+      { name: 'conversation.input.left', id: COMPUTER_SLOT_ID, order: 30 },
+      ComputerTargetPicker,
+    ),
   )
 }

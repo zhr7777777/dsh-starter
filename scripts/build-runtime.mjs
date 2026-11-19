@@ -93,6 +93,12 @@ for (const { directory, manifest } of plugins) {
   cpSync(join(directory, 'package.json'), join(target, 'package.json'))
   cpSync(join(directory, 'cordis.patch.yml'), join(target, 'cordis.patch.yml'))
   cpSync(join(directory, 'dist'), join(target, 'dist'), { recursive: true })
+  // Runtime assets a plugin resolves relative to its package root (locale
+  // dictionaries, the manifest `icon`, the license, remote data snapshots).
+  for (const extra of ['locale', 'icon.svg', 'LICENSE', 'README.md', 'data']) {
+    const source = join(directory, extra)
+    if (existsSync(source)) cpSync(source, join(target, extra), { recursive: true })
+  }
   console.log(`  + ${manifest.name}${manifest.dsh?.client ? ' (host+client)' : ' (host only)'}`)
 }
 

@@ -1,0 +1,199 @@
+import { createElement as h, useEffect, useLayoutEffect, useMemo, useRef, type ReactElement } from 'react'
+import type { AgentHeads } from '../agentHeads'
+import { agentSelfOf } from '../agentTree'
+import { displayCurrencyOf } from '../cost'
+import { mergeComms, mergeDelegations } from '../fleetDetail'
+import { attestedNamesOf, commsAgentsOf } from '../fleetAgents'
+import { mergedDetailOf, useFleetDetails, useFleetModel } from '../fleetModel'
+import { teamOfProjection, teamWithSummaryRosterOf } from '../fleetTeam'
+import type { ClientCtx, SessionStandardProps } from '../services'
+import { CONTEXT_VIEW_ID, openChildAsideVia, openSessionVia, seatKeyOf, seedConversationViewVia, unsupportedOf } from '../services'
+import { useFleetMemberFocus } from '../viewFocus'
+import { useContextSession } from '../sessionData'
+import type { ViewKit } from '../viewkit'
+import type { FleetDetail, FleetMemberInfo } from '../../shared/types'
+import { makeAgentGraph } from './agentGraph'
+import { makeDetailNote } from './detailNote'
+import { LoadingLane } from './skeleton'
+import { IconChecklistOutlineRegular, IconSendOutlineRegular, IconWorkspaceTreeOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { makeRichText } from './richText'
+import { makeErrorBoundary } from './errorBoundary'
+import { MissionPulse, PulseHeader } from './missionPulse'
+import { makeUpgradeGate } from './upgradeGate'
+import { useConversationSurface } from './useConversationSurface'
+
+export function makeFleetView(
+  ctx: ClientCtx,
+  kit: ViewKit,
+  heads: AgentHeads,
+): (props: SessionStandardProps) => ReactElement {
+  const { t } = kit
+  const UpgradeGate = makeUpgradeGate(kit)
+  const AgentGraph = makeAgentGraph(ctx, kit, heads)
+  const DetailNote = makeDetailNote(kit)
+  const ErrorBoundary = makeErrorBoundary(t)
+  const rich = makeRichText(kit)
+
+  function FleetBody(props: SessionStandardProps): ReactElement {
+    const sessionId = typeof props.sessionId === 'string' ? props.sessionId : undefined
+    const { source, data, pressure, breakdown, usage } = useContextSession(props)
+    const rootRef = useRef<HTMLDivElement | null>(null)
+    useConversationSurface(rootRef)
+    useLayoutEffect(() => {
+      /* v8 ignore next 3 */
+      const scroller = rootRef.current !== null
+        ? rootRef.current.closest('[data-conversation-scroll]')
+        : null
+      if (scroller !== null) scroller.scrollTop = 0
+    }, [sessionId])
+    const self = data !== null ? agentSelfOf(data, pressure, breakdown, usage) : undefined
+    const { forest, team: rowTeam, titles } = useFleetModel(ctx, heads, sessionId, self, data !== null, 120)
+    const teamDirect = teamOfProjection(props, sessionId)
+    const details = useFleetDetails(undefined, { scopeKey: sessionId })
+    const team = teamWithSummaryRosterOf(teamDirect ?? rowTeam, details.summary?.members)
+    const focusMember = useFleetMemberFocus(sessionId)
+    const byId = useMemo(
+      () => new Map((forest?.nodes ?? []).map(node => [node.id, node])),
+      [forest],
+    )
+    const leadId = team?.members.find(member => member.role === 'lead')?.id ?? team?.members[0]?.id
+    const detailNodes = useMemo(
+      () => forest?.nodes ?? (team?.members ?? []).map(member => ({ id: member.id, updatedAt: 0 })),
+      [forest, team],
+    )
+    const detailStamp = detailNodes.map(node => `${node.id}@${node.updatedAt}`).join(',')
+    const rootNode = forest !== null ? forest.nodes[0] : undefined
+    const rootId = rootNode?.id ?? sessionId ?? ''
+    const rootStamp = rootNode?.updatedAt ?? 0
+    const priority = useMemo(() => {
+      const ids = new Set<string>()
+      if (focusMember !== null) ids.add(focusMember)
+      return ids
+    }, [focusMember])
+    const priorityStamp = [...priority].join(',')
+    useEffect(() => {
+      if (rootId === '') return
+      details.requestFamily({ rootId, rootStamp, entries: detailNodes, priority })
+    }, [detailStamp, priorityStamp, rootId, rootStamp])
+    const landedDetails = useMemo(() => {
+      const map = new Map<string, FleetDetail>()
+      for (const node of detailNodes) {
+        const detail = mergedDetailOf(details, node.id)
+        if (detail !== null) map.set(node.id, detail)
+      }
+      return map
+    }, [detailNodes, details.landed, details.historyLanded])
+    const delegationSource = useMemo(() => {
+      const map = new Map<string, FleetDetail>()
+      for (const [id, fact] of details.facts) {
+        map.set(id, { messages: [], delegations: [...fact.delegations], truncated: false })
+      }
+      return map
+    }, [details.facts])
+    const comms = useMemo(() => mergeComms(landedDetails), [landedDetails])
+    const delegations = useMemo(() => mergeDelegations(delegationSource), [delegationSource])
+    const attestedNames = useMemo(() => attestedNamesOf(comms), [comms])
+    const leadDetail = leadId !== undefined ? mergedDetailOf(details, leadId) : null
+    const leadRoster: readonly FleetMemberInfo[] | undefined = leadDetail?.roster
+      ?? (leadId === undefined ? undefined : details.facts.get(leadId)?.roster)
+    const agents = useMemo(
+      () => commsAgentsOf(forest?.nodes ?? [], team, leadRoster, attestedNames, t),
+      [attestedNames, forest, leadRoster, team, t],
+    )
+    const open = (id: string): void => {
+      const node = byId.get(id)
+      /* v8 ignore next 5 */
+      if (openChildAsideVia(ctx, {
+        childSessionId: id,
+        parentSessionId: node?.parentId,
+        mode: node?.identity?.mode,
+      })) return
+      openSessionVia(ctx, id)
+    }
+    const enter = (id: string): void => {
+      seedConversationViewVia(id, CONTEXT_VIEW_ID)
+      openSessionVia(ctx, id)
+    }
+    if (data === null && source.detailState === 'failed') {
+      return (
+        <div className="lc-root" ref={rootRef}>
+          <DetailNote state="failed" onRetry={source.retryDetail} />
+        </div>
+      )
+    }
+    if (data === null) {
+      return (
+        <div className="lc-root" ref={rootRef}>
+          <div className="lc-pulse" aria-busy="true">
+            <PulseHeader
+              agentCount={0}
+              running={null}
+              tasks={0}
+              messages={0}
+              pending
+              failed={0}
+              total={0}
+              selected={null}
+              t={t}
+            />
+            <div className="lc-pulse-main lc-pulse-main-graph">
+              <div className="lc-col-graph">
+                <div className="lc-card lc-deferred-skeleton lc-pulse-graph-skel" aria-hidden="true" />
+              </div>
+              <div className="lc-pulse-boards">
+                <div className="lc-card lc-pulse-timeline lc-pulse-board-skel">
+                  <div className="lc-card-title">
+                    <span className="lc-card-title-text"><IconWorkspaceTreeOutlineRegular size={14} />{t('fleet.pulse.timeline')}</span>
+                  </div>
+                  <LoadingLane />
+                </div>
+                <div className="lc-card lc-pulse-tasks lc-pulse-board-skel">
+                  <div className="lc-card-title">
+                    <span className="lc-card-title-text"><IconChecklistOutlineRegular size={14} />{t('fleet.pulse.work')}</span>
+                  </div>
+                  <LoadingLane />
+                </div>
+              </div>
+            </div>
+            <div className="lc-card lc-pulse-events lc-pulse-events-skel">
+              <div className="lc-card-title">
+                <span className="lc-card-title-text"><IconSendOutlineRegular size={14} />{t('fleet.pulse.events')}</span>
+              </div>
+              <LoadingLane />
+            </div>
+          </div>
+        </div>
+      )
+    }
+    const gate = unsupportedOf(data.unsupported)
+    return (
+      <div className="lc-root" ref={rootRef}>
+        <MissionPulse
+          key={sessionId ?? ''}
+          sessionId={sessionId}
+          graph={AgentGraph}
+          forest={forest}
+          team={team}
+          details={details}
+          landedDetails={landedDetails}
+          comms={comms}
+          delegations={delegations}
+          agents={agents}
+          titles={titles}
+          attested={attestedNames}
+          focusMember={focusMember}
+          currency={displayCurrencyOf(ctx.locale)}
+          onOpen={open}
+          onEnter={enter}
+          rich={rich}
+          t={t}
+        />
+        {gate !== null ? <UpgradeGate sessionId={sessionId} current={gate.current} minimum={gate.minimum} /> : null}
+      </div>
+    )
+  }
+
+  return function FleetView(props: SessionStandardProps): ReactElement {
+    return h(ErrorBoundary, null, h(FleetBody, { ...props, key: seatKeyOf(props) }))
+  }
+}

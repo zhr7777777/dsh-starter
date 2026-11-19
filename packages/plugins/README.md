@@ -5,13 +5,13 @@
 ```
 packages/plugins/
 ├── README.md          ← 本文件
-├── starter/           ← 示例 A：Host 服务 + 两个 UI 插槽（Host + Client 双面）
+├── starter/           ← 示例 A：Host 服务 + 两个 UI 插槽（主面板、输入框运行位置选择）
 │   ├── package.json   ← 双面 exports + dsh.bundle.patch + dsh.client
 │   ├── cordis.patch.yml
 │   ├── tsconfig.json
 │   └── src/
 │       ├── index.ts   ← Host 入口（Node）
-│       └── client.tsx ← 浏览器入口（插槽注册）
+│       └── client.tsx ← 浏览器入口（Starter 面板、本地/云电脑选择）
 ├── expert-team/       ← 示例 B：输入框左侧「专家团」，点击弹浮层，召唤后跳转 Starter 面板
 │   ├── package.json
 │   ├── cordis.patch.yml
@@ -25,20 +25,29 @@ packages/plugins/
 │   ├── tsconfig.json
 │   └── src/
 │       └── index.ts   ← 提供服务 + 生命周期，无浏览器入口
-└── usage-stats/       ← 示例 D：设置页「用量统计」，数据来自 dsh-context
+├── dsh-context/       ← 内置：用量统计（上游完整源码，设置页入口）
+│   ├── package.json   ← 双面 exports + dsh.bundle.patch + dsh.client
+│   ├── tsdown.config.ts
+│   ├── cordis.patch.yml
+│   ├── locale/ icon.svg
+│   └── src/
+│       ├── host/      ← Host 面（投影、路由、命令、缓存）
+│       ├── client/    ← settings.section 页面与其余 UI
+│       └── shared/    ← 两端共享类型
+└── inline-settings/   ← 示例 D：把官方设置弹窗停靠到主区域（纯表现层）
     ├── package.json
     ├── cordis.patch.yml
     ├── tsconfig.json
     └── src/
         ├── index.ts   ← 最小 Host 面，只为让 client 模块被发现
-        └── client.tsx ← settings.section + overview 取数/渲染
+        └── client.tsx ← 给官方设置 portal 注入停靠样式与导航收起逻辑
 ```
 
 ## 两种插件形态
 
 | 形态 | 需要哪些源文件 | `exports` | `dsh` 字段 | 典型用途 |
 |---|---|---|---|---|
-| **Host + Client** | `src/index.ts` + `src/client.tsx` | `.` + `./client` | `bundle.patch` + `client` | 有界面的业务功能（`starter/`、`expert-team/`、`usage-stats/`） |
+| **Host + Client** | `src/index.ts` + `src/client.tsx`（或 `src/host/index.ts` + `src/client/index.ts` + 自有构建） | `.` + `./client` | `bundle.patch` + `client` | 有界面的业务功能（`starter/`、`expert-team/`、`dsh-context/`、`inline-settings/`） |
 | **仅 Host** | `src/index.ts` | 只有 `.` | 只有 `bundle.patch` | 服务、工具、存储、会话中间件（`host-only/`） |
 
 **没有「仅 Client」这种形态。** 官方 client-modules 是**扫描 Host loader entries** 来找 `dsh.client` 声明的——没有 loader 行（也就没有 Host 入口）就没有浏览器模块。所以哪怕是纯 UI 插件，也保留一个最小 `src/index.ts` + `cordis.patch.yml`（`expert-team/` 就是这么做的）。
@@ -48,6 +57,8 @@ packages/plugins/
 - 有 `src/index.ts` → 产出 Host ESM；
 - 有 `src/client.tsx` → 产出 `__ModuleLoader__` 客户端模块；
 - 构建前会清理这两个旧产物，删掉某个面后不会残留。
+
+如果包内存在 `tsdown.config.ts`，构建脚本会直接调用包自己的 tsdown（`dsh-context/` 用它处理 Tailwind、CSS Modules、SVG 与声明文件），不再套用上面的 esbuild 预设；这类包把产物统一写到 `dist/` 即可。
 
 ## 插件 = 一个包，两个面
 
@@ -151,29 +162,49 @@ ctx.slots.inject('conversation.input.left', () => ctx.slots.register(
 
 三位专家是页面内的 mock 数据（`experts` 常量），没有 Host 往返，也没有改动会话。
 
-## 示例 D：用量统计（设置页 + 外部插件）
+## 内置插件：上下文洞察（设置页 + 上游完整源码）
 
-`usage-stats/` 演示两件事：
-
-1. **往官方设置面板加分页**：注册 `settings.section`，`id: 'usage-stats'`、`order: -5`。官方 Account 是 `-10`、General 是 `0`，所以它排在「通用设置」正上方；
-2. **消费另一个插件的只读 HTTP 契约**：页面只 POST `api/dsh-context/overview`，按 `summary` / `days` / `tally` / `page` 四段取数，不 import `dsh-context` 的内部模块，也不自己重折会话日志。
+`dsh-context/` 是把上游 `dsh-context@0.85.1` 源码内置进仓库的插件，功能全部保留，只把页面入口从 `main` + `sidebar.panellist` 改成官方设置面板分区：
 
 ```tsx
 ctx.slots.inject('settings.section', () => ctx.slots.register(
-  { name: 'settings.section', id: 'usage-stats', order: -5, label: '用量统计' },
-  UsagePage,
+  { name: 'settings.section', id: 'dsh-context', order: -5, label: () => t('ov.title'), locale: NS },
+  OverviewPage,
 ))
 ```
 
-`dsh-context` 是 npm 外部包（`dsh-context@^0.85.1`）。Profile 是独立 pnpm 项目，所以根 `package.json` 里的依赖不会自动进 Profile；`scripts/dev.mjs` 会检查 Profile 并在缺失时执行：
+官方 Account 是 `-10`、General 是 `0`，所以 `-5` 排在「通用设置」正上方，替换原「用量统计」页（`usage-stats/` 已删除）。上下文总览、`/context` 命令、会话右侧页签、输入框跳转按钮、Fleet 视图等仍由同一个包的 Host 面提供。
 
-```bash
-dsh plugin --profile starter add -w dsh-context@^0.85.1
+这个包演示**接入自带构建的第三方插件**：
+
+1. 源码布局是 `src/host/` + `src/client/` + `src/shared/`，不是仓库通用的单文件入口；
+2. 包内保留 `tsdown.config.ts`，处理 Tailwind、CSS Modules、`icon.svg?raw`、纯度和声明文件；
+3. `scripts/build-plugin.mjs` 看到 `tsdown.config.ts` 就运行包内 tsdown，产物为 `dist/index.js`、`dist/client.js`、`dist/index.d.ts`；
+4. `scripts/build-runtime.mjs` 除 `dist/` 外还会复制 `locale/`、`icon.svg` 等包根资源，桌面版不需要额外安装。
+
+依赖仍按上游保留：`zod` 是运行时依赖，`@deepseek-ai/*` 与 React 走 Peer/官方模块表，不会把第二份 React 或官方客户端包打进 bundle。
+
+## 示例 D：设置内联（停靠官方弹窗）
+
+`inline-settings/` 演示**不替换官方组件、只调整官方 portal 的呈现**：
+
+1. 官方设置只以 body portal 的模态框存在，`sidebar.settings` / `settings.section` 都没有「换成主区域内联页」的开关；
+2. 插件在客户端注入一段样式，把 `[data-shortcut-modal="settings"]` 的父级 overlay 从全屏改为 `main` 列矩形，并隐藏遮罩；
+3. 面板本体仍是官方组件：导航、分区、关闭按钮、Escape、焦点管理全部照旧；
+4. 点击侧栏其他菜单时，先用官方关闭按钮收起设置，再让点击继续，所以不会出现「设置盖住新页面」。
+
+```tsx
+const OVERLAY = 'body > div[role="presentation"]:has(> [data-shortcut-modal="settings"])'
+
+document.head.appendChild(Object.assign(document.createElement('style'), {
+  id: 'dsh-inline-settings-style',
+  textContent: `${OVERLAY} { inset: var(--dsh-settings-dock-top) ...; pointer-events: none }`,
+}))
 ```
 
-同时把它写进 `dsh.profile.bundles`。桌面打包（`build-runtime.mjs`）目前只复制本仓库的 `packages/plugins/*`，不带这个外部插件，所以桌面版该页会降级为「暂时拿不到用量数据」——这是有意的显式降级，不是崩溃。
+停靠矩形来自 `[data-slot="main"]` 的父元素，并用 `ResizeObserver` 跟随侧栏展开/收起与窗口缩放。所有选择器都是公开标记（`data-shortcut-modal`、`data-slot`、`role`），不使用官方 CSS Module 的哈希类名。
 
-数据为空时页面会区分两种状态：接口不可用（提示检查 dsh-context）和时间范围内没有会话（提示先跑一轮对话）。
+局限：官方仍把面板标记为 `role="dialog"` / `aria-modal="true"` 并保留焦点陷阱；视觉和鼠标操作已经内联，键盘焦点仍留在面板内。要连语义一起改，需要官方提供设置外壳插槽。
 
 ## 构建与运行
 

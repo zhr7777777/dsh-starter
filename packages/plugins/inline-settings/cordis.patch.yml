@@ -1,0 +1,6 @@
+# Composed into the Profile patch by the official plugin manager.
+# The Host face only exists so the client-modules service can discover the
+# `dsh.client` declaration; the UI work happens in the browser entry.
+- insert:
+    - id: dsh-inline-settings-plugin
+      name: dsh-inline-settings-plugin

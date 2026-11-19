@@ -13,6 +13,7 @@
 import { build } from 'esbuild'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -33,6 +34,28 @@ async function buildPlugin(pluginDir) {
   const manifest = JSON.parse(readFileSync(join(pluginDir, 'package.json'), 'utf8'))
   const dist = join(pluginDir, 'dist')
   mkdirSync(dist, { recursive: true })
+
+  // A plugin may carry its own bundler when the generic esbuild presets cannot
+  // express it (CSS Modules, Tailwind, SVG imports, generated declarations).
+  // `tsdown.config.ts` is the marker: run the package's own build instead of
+  // reimplementing that pipeline here.
+  if (existsSync(join(pluginDir, 'tsdown.config.ts'))) {
+    const requireFromPlugin = createRequire(join(pluginDir, 'package.json'))
+    const tsdownManifest = JSON.parse(readFileSync(requireFromPlugin.resolve('tsdown/package.json'), 'utf8'))
+    const binField = tsdownManifest.bin
+    const bin = typeof binField === 'string' ? binField : binField?.tsdown
+    if (typeof bin !== 'string') {
+      throw new Error(`${manifest.name}: tsdown declares no "tsdown" bin`)
+    }
+    execFileSync(
+      process.execPath,
+      [resolve(dirname(requireFromPlugin.resolve('tsdown/package.json')), bin)],
+      { cwd: pluginDir, stdio: 'inherit' },
+    )
+    console.log(`built ${manifest.name} [tsdown] -> ${dist}`)
+    return
+  }
+
   // Drop previous artifacts so a face that was removed cannot linger in dist.
   for (const leftover of ['index.js', 'client.browser.js']) rmSync(join(dist, leftover), { force: true })
 

@@ -37,8 +37,5 @@
     "esbuild": "0.25.12",
     "react": "19.2.4",
     "typescript": "5.9.3"
-  },
-  "dependencies": {
-    "dsh-context": "^0.85.1"
   }
 }

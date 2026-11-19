@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const pluginsRoot = join(root, 'packages/plugins')
-const tsc = join(root, 'node_modules/typescript/bin/tsc')
+const rootTsc = join(root, 'node_modules/typescript/bin/tsc')
 
 const plugins = readdirSync(pluginsRoot, { withFileTypes: true })
   .filter(entry => entry.isDirectory())
@@ -20,6 +20,10 @@ if (!plugins.length) {
 }
 
 for (const directory of plugins) {
+  // Packages that pin their own compiler (dsh-context uses TypeScript 7's
+  // native checker) typecheck with it; everything else uses the repo version.
+  const localTsc = join(directory, 'node_modules/typescript/bin/tsc')
+  const tsc = existsSync(localTsc) ? localTsc : rootTsc
   execFileSync(process.execPath, [tsc, '-p', join(directory, 'tsconfig.json'), '--noEmit'], { stdio: 'inherit' })
   console.log(`typecheck ok: ${directory.slice(root.length + 1)}`)
 }

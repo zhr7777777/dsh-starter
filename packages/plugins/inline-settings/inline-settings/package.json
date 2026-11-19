@@ -1,0 +1,42 @@
+{
+  "name": "dsh-inline-settings-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dock the official Settings dialog into the main column so it reads like a regular sidebar page.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.browser.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  },
+  "scripts": {
+    "build": "node ../../../scripts/build-plugin.mjs packages/plugins/inline-settings",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.5"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "typescript": "5.9.3"
+  }
+}

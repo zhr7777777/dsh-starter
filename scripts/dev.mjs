@@ -10,7 +10,7 @@
  */
 import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -90,6 +90,26 @@ const layout = pluginDirectories().map(directory => {
 })
 
 const profileManifest = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
+
+// A plugin deleted from packages/plugins must also leave the Profile. Only
+// file: dependencies are ours; registry packages (the official shell and any
+// manually added external plugin) stay put.
+const currentNames = new Set(layout.map(({ manifest }) => manifest.name))
+const stale = Object.keys(profileManifest.dependencies ?? {})
+  .filter(name => !currentNames.has(name) && String(profileManifest.dependencies[name]).startsWith('file:'))
+if (stale.length) {
+  for (const name of stale) {
+    delete profileManifest.dependencies[name]
+    rmSync(join(profileDir, 'node_modules', name), { recursive: true, force: true })
+  }
+  const bundles = profileManifest.dsh?.profile?.bundles
+  if (Array.isArray(bundles)) {
+    profileManifest.dsh.profile.bundles = bundles.filter(name => !stale.includes(name))
+  }
+  writeFileSync(join(profileDir, 'package.json'), JSON.stringify(profileManifest, null, 2) + '\n')
+  console.log(`removing stale plugin(s): ${stale.join(', ')}`)
+}
+
 const pending = layout.filter(({ manifest, archive }) => profileManifest.dependencies?.[manifest.name] !== `file:${archive}`)
 
 for (const { manifest, archive } of pending) {
@@ -103,6 +123,9 @@ if (pending.length) {
   // -w: a scaffolded Profile is a single-package pnpm workspace, so pnpm needs
   // the explicit workspace-root flag. `dsh plugin` forwards arguments verbatim.
   run(['plugin', '--profile', profileName, 'add', '-w', ...pending.map(({ archive }) => archive)])
+}
+
+if (pending.length || stale.length) {
   // pnpm keys a resolved `file:` tarball by name+version, not by path, so a
   // rebuilt plugin updates the lockfile specifier while keeping the old
   // resolved archive — the Profile then keeps serving the previous build.
@@ -122,27 +145,7 @@ if (pending.length) {
   console.log(`all ${layout.length} plugin(s) already registered with the current build`)
 }
 
-// 4) external plugin the UI builds on: dsh-context owns the session projection
-//    cache and the overview route behind the usage-stats settings page. The
-//    Profile is its own pnpm project, so a root dependency is not enough — the
-//    package has to be added to the Profile and to its bundle list.
-const externalPlugins = ['dsh-context']
-const currentProfile = JSON.parse(readFileSync(join(profileDir, 'package.json'), 'utf8'))
-const externalPending = externalPlugins.filter(name => currentProfile.dependencies?.[name] === undefined)
-
-if (externalPending.length) {
-  const rootManifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
-  const specs = externalPending.map(name => {
-    const spec = rootManifest.dependencies?.[name]
-    return typeof spec === 'string' ? `${name}@${spec}` : name
-  })
-  console.log(`registering external plugin(s): ${specs.join(', ')}`)
-  run(['plugin', '--profile', profileName, 'add', '-w', ...specs])
-} else {
-  console.log(`external plugin(s) already registered: ${externalPlugins.join(', ')}`)
-}
-
-// 5) serve
+// 4) serve
 console.log(`Starting dsh web on http://${host}:${port} (DSH_HOME=${home})`)
 const child = spawn(
   node,

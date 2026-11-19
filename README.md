@@ -29,13 +29,13 @@ corepack pnpm dev
 3. 把插件打包成内容寻址的 `.tgz` 并注册进该 Profile；
 4. 启动官方 `dsh web`，地址形如 `http://127.0.0.1:18990/?token=…`。
 
-打开终端里打印的带 token 链接，侧栏会出现「示例」，点开就是插件注册的面板。
+打开终端里打印的带 token 链接；输入框左下角会出现「本地电脑 / 云电脑」切换，点击「专家团」召唤后会打开 Starter 面板。
 
 本机实测结果（0.2.1-rc.5）：
 
 - Profile 由官方 CLI 脚手架生成，`dsh --profile starter --dump-config` 含 `id: dsh-starter-plugin`；
 - 页面 boot 清单里出现 `dsh-starter-plugin/client.js`，说明客户端模块被官方 client-modules 自动装载；
-- 侧栏出现带我们图标的一行（`aria-label="示例"`），点击后 `main` 插槽渲染出「第一个插槽面板」；
+- 侧栏不再出现「示例」入口；Starter 面板保留为 `main` 键控槽，由「专家团」召唤打开；
 - 官方 Conversation、Composer、侧栏骨架全部保持原样。
 
 端口与 Home 都可覆盖：
@@ -62,10 +62,11 @@ pnpm desktop
 | 路径 | 作用 |
 |---|---|
 | `packages/plugins/` | **所有插件**；一个目录一个包，构建/注册/启动自动发现（见 [插件说明](packages/plugins/README.md)） |
-| `packages/plugins/starter/` | 示例 A：**Host + Client 双面**，侧栏图标 + 主面板（`starter-hello`） |
+| `packages/plugins/starter/` | 示例 A：**Host + Client 双面**，主面板（`starter-hello`）+ 输入框「本地/云电脑」选择 |
 | `packages/plugins/expert-team/` | 示例 B：**输入框左侧「专家团」**，点击弹浮层，召唤后跳转 Starter 面板 |
 | `packages/plugins/host-only/` | 示例 C：**仅 Host**，提供服务与生命周期，没有任何 UI |
-| `packages/plugins/usage-stats/` | 示例 D：**设置页「用量统计」**，排在「通用设置」上方，读取 `dsh-context` 的 overview 接口 |
+| `packages/plugins/dsh-context/` | 内置的**上下文洞察**插件（内置自上游 `dsh-context@0.85.1`），设置页入口排在「通用设置」上方 |
+| `packages/plugins/inline-settings/` | 示例 D：**设置内联**，把官方设置弹窗停靠到主区域，像普通侧栏菜单一样显示 |
 | `scripts/build-plugin.mjs` | 构建全部插件（或指定目录）：按源文件自动决定 Host / Client 面 |
 | `scripts/typecheck.mjs` | 逐个插件 `tsc --noEmit` |
 | `scripts/dev.mjs` | 脚手架 Profile → 打包并注册全部插件 → 启动 `dsh web` |
@@ -114,12 +115,12 @@ window.__ModuleLoader__.load({
 ### 3. 插槽键必须成对
 
 ```tsx
-const PANEL_ID = 'starter-hello'                                  // 同一个字符串两处用
+const PANEL_ID = 'my-panel'                                       // 同一个字符串两处用
 
 ctx.slots.register({ name: 'sidebar.panellist', id: PANEL_ID,     // 列表槽：去重键 + 排序 + 无障碍名
-                     label: '示例', order: 15 }, StarterIcon)     // 组件只画字形（收到 {size, active}）
+                     label: '我的面板', order: 15 }, MyPanelIcon) // 组件只画字形（收到 {size, active}）
 
-ctx.slots.register({ name: 'main', key: PANEL_ID }, StarterPanel) // 键控槽：点击侧栏后渲染这里
+ctx.slots.register({ name: 'main', key: PANEL_ID }, MyPanel)      // 键控槽：点击侧栏后渲染这里
 ```
 
 `sidebar.panellist` 的每一行由官方壳渲染 `<button>`（tooltip、`aria-label`、选中态、折叠宽度），你的组件只返回图标；点击后官方调用 `layout.selectPanel(id)`，再由 `main` 按 key 找到你的面板。
@@ -139,33 +140,35 @@ ctx.slots.register({ name: 'main', key: PANEL_ID }, StarterPanel) // 键控槽�
 grep -r "interface SlotMap" node_modules/.dsh-home/profiles/starter/node_modules/@deepseek-ai/*/lib/types -l
 ```
 
-## 用量统计页（依赖 dsh-context）
+## 上下文洞察（内置 dsh-context）
 
-`packages/plugins/usage-stats/` 往官方设置面板的 `settings.section` 里注册一个分区：
+`packages/plugins/dsh-context/` 内置了上游 `dsh-context@0.85.1` 的完整源码与功能：上下文总览仪表盘、`/context` 命令、会话右侧上下文页签、输入框跳转按钮、Fleet 视图等全部保留，只调整了页面入口。
+
+入口从原来的 `main` + `sidebar.panellist` 改为官方设置面板的 `settings.section`：
 
 ```tsx
 ctx.slots.inject('settings.section', () => ctx.slots.register(
-  { name: 'settings.section', id: 'usage-stats', order: -5, label: '用量统计' },
-  UsagePage,
+  { name: 'settings.section', id: 'dsh-context', order: -5, label: () => t('ov.title'), locale: NS },
+  OverviewPage,
 ))
 ```
 
-官方分区顺序是 Account `-10`、General `0`、Models `10`、Plugins `15`，所以 `-5` 正好落在「通用设置」上面。
+官方分区顺序是 Account `-10`、General `0`、Models `10`、Plugins `15`，所以 `-5` 正好落在「通用设置」上方，替换原「用量统计」页；原 `usage-stats/` 插件已删除。
 
-页面本身不折叠会话日志，只 POST `dsh-context` 的只读路由 `api/dsh-context/overview`（`summary` / `days` / `tally` / `page` 四段），复用它的投影缓存与冷会话补齐：
+页面数据仍由 dsh-context 自己的 Host 面提供：会话投影缓存、冷会话补齐与 `api/dsh-context/overview` 路由都在同一个包内，因此不再需要外部 npm 插件，也不再需要 `scripts/dev.mjs` 单独注册。
 
-- 时间范围：今天 / 近 7 天 / 近 30 天；
-- 指标：计费 Token、预估成本、轮次、缓存命中率；
-- 图表：按日 Token 柱状图、Token 构成（系统/工具/用户/推理/回答等）、工具调用榜、会话榜；
-- 每 30 秒自动刷新，页面不可见时跳过。
+构建上，这个包自带 `tsdown.config.ts`（Tailwind、CSS Modules、SVG、声明文件），`scripts/build-plugin.mjs` 检测到该文件就直接运行包内的 tsdown，而不是套用仓库通用的 esbuild 预设；产物统一输出到 `dist/index.js` 与 `dist/client.js`。`scripts/build-runtime.mjs` 会连同 `locale/`、`icon.svg` 一起复制，所以桌面版同样可用。
 
-`dsh-context` 是 npm 上的外部插件（`dsh-context@^0.85.1`），根 `package.json` 只是一个版本锚点；真正的安装发生在 `scripts/dev.mjs`：Profile 是独立的 pnpm 项目，脚本会检查并执行 `dsh plugin --profile starter add -w dsh-context@^0.85.1`，同时把它加进 `dsh.profile.bundles`。
+## 设置内联显示
 
-因此：
+官方设置外壳（`ui-settings-general`）只提供一种形态：把 800×800 的设置面板 portal 到 `document.body`，再盖一层全屏遮罩。插槽里没有「只替换设置弹窗外壳」的扩展点，因此 `packages/plugins/inline-settings/` 不去 Fork 官方包，也不复制它的组件，而是保留官方面板本体，只调整它的 portal：
 
-- **Web / 开发模式**：`pnpm dev` 会自动装好 dsh-context，页面有数据；
-- **桌面打包**：`build-runtime.mjs` 只复制 `packages/plugins/*`，不带外部 npm 插件，页面会显示「暂时拿不到用量数据」；要让它进安装包，需要把 dsh-context（及其依赖）一起放进 runtime Profile；
-- 没有 dsh-context 或还没跑过真实对话时，页面会显式降级，而不是报错。
+- 隐藏全屏遮罩，把面板定位到 `main` 列（也就是「自动化任务」等菜单渲染的区域）；
+- 面板继续使用官方导航、`settings.section`、关闭按钮、焦点管理与 Escape 处理；
+- 点击侧栏其他菜单或「新会话」时，先通过官方关闭按钮收起设置，再执行跳转，避免设置盖住新页面；
+- 选择器只依赖公开的 `data-shortcut-modal="settings"`、`data-slot="main"`、`data-slot="sidebar"`，不依赖官方 CSS Module 的哈希类名。
+
+局限：官方面板仍保留 `role="dialog"` / `aria-modal="true"` 和焦点陷阱，视觉与鼠标交互已经内联，键盘焦点仍然被限制在设置面板内。要做到语义上也完全内联，需要官方提供可替换设置外壳的插槽。
 
 ## 桌面外壳（Electron）
 
