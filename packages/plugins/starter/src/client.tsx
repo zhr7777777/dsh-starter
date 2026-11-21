@@ -3,7 +3,8 @@
  *
  * Only public slot APIs are used here. The shell owns layout, the sidebar
  * structure, accessibility and selection state; this file contributes one
- * programmatic panel body and the composer's computer-target picker.
+ * programmatic panel body, the composer's computer-target picker, the New
+ * Session recommended questions, and the New Session brand footer.
  */
 import * as React from 'react'
 import type { Context } from '@deepseek-ai/cordis'
@@ -11,8 +12,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
 // Type-only: merges `main` into SlotMap.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-// Type-only: merges `conversation.input.left` into SlotMap.
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: merges the composer slots into SlotMap and exposes the input face.
+import type { InputActions, InputZone } from '@deepseek-ai/dsh-client-ui-conversation/client'
 
 export const name = 'dsh-starter-client'
 export const inject = ['slots'] as const
@@ -223,6 +224,113 @@ function ComputerTargetPicker(): React.ReactElement {
   )
 }
 
+const RECOMMENDED_SLOT_ID = 'dsh-recommended-questions'
+
+interface RecommendedQuestion {
+  readonly id: string
+  readonly text: string
+}
+
+/**
+ * Four prompts shown below the composer only while the current Session is a
+ * New Session. Clicking one writes it into the official draft editor through
+ * the public `inputActions` face, so every edit afterwards stays native.
+ */
+const RECOMMENDED_QUESTIONS: readonly RecommendedQuestion[] = [
+  { id: 'explore', text: '帮我快速了解这个项目的目录结构和主要功能。' },
+  { id: 'build', text: '帮我实现一个新功能，并告诉我需要修改哪些文件。' },
+  { id: 'explain', text: '解释一下这段代码的实现思路和关键设计。' },
+  { id: 'debug', text: '帮我排查一个报错，先分析可能的原因。' },
+]
+
+const recommendedCss = `
+.dsh-recommended{box-sizing:border-box;order:1;width:100%;margin-top:2px;padding:0 16px}
+.dsh-recommended *{box-sizing:border-box}
+.dsh-recommended__grid{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.dsh-recommended__item{display:flex;align-items:center;gap:9px;min-width:0;max-width:100%;padding:10px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:13px/20px var(--dsw-font-family,sans-serif);text-align:left;cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+.dsh-recommended__item:hover{background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l3,var(--dsw-alias-border-l2));color:var(--dsw-alias-label-primary)}
+.dsh-recommended__item:focus-visible{outline:none;box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary))}
+.dsh-recommended__icon{flex:none;display:inline-flex;color:var(--dsw-alias-label-caption,var(--dsw-alias-label-secondary))}
+.dsh-recommended__icon svg{width:15px;height:15px}
+.dsh-recommended__text{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsh-recommended__arrow{flex:none;display:inline-flex;color:var(--dsw-alias-label-caption,var(--dsw-alias-label-secondary));transition:transform .12s,color .12s}
+.dsh-recommended__arrow svg{width:14px;height:14px}
+.dsh-recommended__item:hover .dsh-recommended__arrow{color:var(--dsw-alias-label-primary);transform:translateX(2px)}
+`
+
+function SparkIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 1.75 9.2 5.4 12.8 6.6 9.2 7.8 8 11.4 6.8 7.8 3.2 6.6 6.8 5.4 8 1.75Z" />
+      <path d="M12.4 10.6v2.2M11.3 11.7h2.2" />
+    </svg>
+  )
+}
+
+function ArrowIcon(): React.ReactElement {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3.25 8h9.5M9 4.25 12.75 8 9 11.75" />
+    </svg>
+  )
+}
+
+function focusComposer(): void {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>('[data-composer-input]')?.focus()
+  })
+}
+
+function RecommendedQuestions({ session, inputActions }: InputZone & { inputActions: InputActions }): React.ReactElement | null {
+  // The official hero exists exactly while the Session is still a New Session.
+  if (!session.blank || session.promptAttempted) return null
+
+  const choose = (question: RecommendedQuestion): void => {
+    inputActions.setDraft(question.text)
+    focusComposer()
+  }
+
+  return (
+    <>
+      <section className="dsh-recommended" aria-label="推荐问">
+        <style>{recommendedCss}</style>
+        <div className="dsh-recommended__grid">
+          {RECOMMENDED_QUESTIONS.map((question) => (
+            <button
+              key={question.id}
+              type="button"
+              className="dsh-recommended__item"
+              title={question.text}
+              onClick={() => { choose(question) }}
+            >
+              <span className="dsh-recommended__icon"><SparkIcon /></span>
+              <span className="dsh-recommended__text">{question.text}</span>
+              <span className="dsh-recommended__arrow"><ArrowIcon /></span>
+            </button>
+          ))}
+        </div>
+      </section>
+      <PoweredByFooter />
+    </>
+  )
+}
+
+const poweredByCss = `
+.dsh-powered-by{position:absolute;left:0;right:0;bottom:14px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--dsw-alias-label-caption,var(--dsw-alias-label-secondary));font:400 12px/18px var(--dsw-font-family,sans-serif);pointer-events:none;user-select:none}
+.dsh-powered-by__brand{color:var(--dsw-alias-label-secondary);font-weight:500}
+`
+
+/** Brand footer pinned to the bottom of the Conversation column. */
+function PoweredByFooter(): React.ReactElement {
+  return (
+    <footer className="dsh-powered-by">
+      <style>{poweredByCss}</style>
+      <span>Powered by</span>
+      <span className="dsh-powered-by__brand">平安智能体平台</span>
+    </footer>
+  )
+}
+
 export function apply(ctx: Context): void {
   // The starter panel no longer has a sidebar row; it stays mounted as a main
   // keyed slot and is opened programmatically by the expert-team trigger.
@@ -236,6 +344,15 @@ export function apply(ctx: Context): void {
     ctx.slots.register(
       { name: 'conversation.input.left', id: COMPUTER_SLOT_ID, order: 30 },
       ComputerTargetPicker,
+    ),
+  )
+
+  // `order: 1` moves this dock below the composer card inside the hero stack.
+  // The occupant renders nothing once the Session stops being a New Session.
+  ctx.slots.inject('conversation.input.dock', () =>
+    ctx.slots.register(
+      { name: 'conversation.input.dock', id: RECOMMENDED_SLOT_ID, order: 10 },
+      RecommendedQuestions,
     ),
   )
 }
